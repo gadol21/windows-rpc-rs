@@ -1,0 +1,31 @@
+[package]
+name = "windows-rpc-macros"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0"
+proc-macro2 = "1.0"
+syn = "2.0"
+
+[dependencies.windows]
+version = "0.62"
+features = [
+    "Win32_Foundation",
+    "Win32_System",
+    "Win32_System_Threading",
+    "Win32_System_Rpc",
+]
+
+[dependencies.windows-sys]
+version = "0.61"
+features = [
+    "Win32_Foundation",
+    "Win32_System",
+    "Win32_System_Com",
+    "Win32_System_Threading",
+    "Win32_System_Rpc",
+]

@@ -1,0 +1,26 @@
+[package]
+name = "windows-rpc"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+windows-rpc-macros = { path = "../windows_rpc_macros" }
+
+[dependencies.windows]
+version = "0.62"
+features = [
+    "Win32_Foundation",
+    "Win32_System",
+    "Win32_System_Threading",
+    "Win32_System_Rpc",
+]
+
+[dependencies.windows-sys]
+version = "0.61"
+features = [
+    "Win32_Foundation",
+    "Win32_System",
+    "Win32_System_Com",
+    "Win32_System_Threading",
+    "Win32_System_Rpc",
+]
