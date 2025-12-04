@@ -748,7 +748,7 @@ fn generate_ndr64_proc_buffer_code(interface: &Interface) -> proc_macro2::TokenS
 }
 
 fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
-    let rpc_client_name = format_ident!("{}", interface.name);
+    let rpc_client_name = format_ident!("{}Client", interface.name);
     let interface_guid_name = format_ident!("{}_GUID", interface.name.to_uppercase());
     let interface_guid = interface.uuid.to_u128();
     let interface_version_major = interface.version.major;
