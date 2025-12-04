@@ -1,5 +1,4 @@
 # Todo item list
-1. Split windows_rpc_macros implementation to files
 1. Simplify windows_rpc_macros implementation
 1. Add support for conforming (null terminated) strings
 1. Add support for sized strings and buffers **input only**

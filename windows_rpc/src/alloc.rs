@@ -18,5 +18,5 @@ pub extern "system" fn midl_free(ptr: *mut core::ffi::c_void) {
     let ptr = ptr as *mut u8;
     let ptr = unsafe { ptr.sub(std::mem::size_of::<Layout>()) };
     let layout_ptr = unsafe { *ptr.cast::<Layout>() };
-    unsafe { std::alloc::dealloc(ptr as *mut u8, layout_ptr) };
+    unsafe { std::alloc::dealloc(ptr, layout_ptr) };
 }
