@@ -1,6 +1,10 @@
 use quote::{format_ident, quote};
 
-use crate::constants::RPC_TRANSFER_SYNTAX_NDR64_GUID;
+use crate::constants::{
+    MIDL_STUB_DESC_CHECK_BOUNDS, MIDL_STUB_DESC_M_FLAGS, MIDL_STUB_DESC_MIDL_VERSION,
+    MIDL_STUB_DESC_VERSION, RPC_CLIENT_INTERFACE_FLAGS, RPC_TRANSFER_SYNTAX_NDR64_GUID,
+    RPC_TRANSFER_SYNTAX_NDR_GUID,
+};
 use crate::ndr::{generate_proc_header, generate_type_format_string};
 use crate::ndr64::{generate_ndr64_proc_buffer_code, generate_ndr64_type_format};
 use crate::types::{Interface, Method, Parameter, Type};
@@ -92,7 +96,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
         // FIXME: move to helper module
         // RPC transfer syntax identifier for NDR
         const RPC_TRANSFER_SYNTAX_2_0: RPC_SYNTAX_IDENTIFIER = RPC_SYNTAX_IDENTIFIER {
-            SyntaxGUID: GUID::from_u128(0x8A885D04_1CEB_11C9_9FE8_08002B104860),
+            SyntaxGUID: GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
             SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
                 MajorVersion: 2,
                 MinorVersion: 0,
@@ -144,7 +148,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                 };
 
                 let mut rpc_transfer_syntax_ndr = Box::new(RPC_SYNTAX_IDENTIFIER {
-                    SyntaxGUID: windows::core::GUID::from_u128(0x8A885D04_1CEB_11C9_9FE8_08002B104860),
+                    SyntaxGUID: windows::core::GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
                     SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
                         MajorVersion: 2,
                         MinorVersion: 0,
@@ -167,7 +171,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                     // NDR 2.0 syntax info (index 0)
                     MIDL_SYNTAX_INFO {
                         TransferSyntax: windows_sys::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER {
-                            SyntaxGUID: windows_sys::core::GUID::from_u128(0x8A885D04_1CEB_11C9_9FE8_08002B104860),
+                            SyntaxGUID: windows_sys::core::GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
                             SyntaxVersion: windows_sys::Win32::System::Rpc::RPC_VERSION {
                                 MajorVersion: 2,
                                 MinorVersion: 0,
@@ -212,14 +216,14 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                     apfnExprEval: std::ptr::null(),
                     aXmitQuintuple: std::ptr::null(),
                     pFormatTypes: type_format.as_ptr(),
-                    fCheckBounds: 1,
-                    Version: 0x60001,
+                    fCheckBounds: #MIDL_STUB_DESC_CHECK_BOUNDS as _,
+                    Version: #MIDL_STUB_DESC_VERSION as _,
                     pMallocFreeStruct: std::ptr::null_mut(),
-                    MIDLVersion: 0x8010274,
+                    MIDLVersion: #MIDL_STUB_DESC_MIDL_VERSION as _,
                     CommFaultOffsets: std::ptr::null(),
                     aUserMarshalQuadruple: std::ptr::null(),
                     NotifyRoutineTable: std::ptr::null(),
-                    mFlags: 0x2000001,
+                    mFlags: #MIDL_STUB_DESC_M_FLAGS as _,
                     CsRoutineTables: std::ptr::null(),
                     // Will be filled later
                     ProxyServerInfo: std::ptr::null_mut(),
@@ -247,7 +251,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                         },
                     },
                     TransferSyntax: RPC_SYNTAX_IDENTIFIER {
-                        SyntaxGUID: GUID::from_u128(0x8A885D04_1CEB_11C9_9FE8_08002B104860),
+                        SyntaxGUID: GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
                         SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
                             MajorVersion: 2,
                             MinorVersion: 0,
@@ -258,7 +262,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                     RpcProtseqEndpoint: std::ptr::null_mut(),
                     Reserved: 0,
                     InterpreterInfo: &raw const *proxy_info as _,
-                    Flags: 0x02000000,
+                    Flags: #RPC_CLIENT_INTERFACE_FLAGS as _,
                 });
                 *iface_handle = &raw mut *client_interface;
                 stub_desc.RpcInterfaceInformation = &raw mut *client_interface as _;

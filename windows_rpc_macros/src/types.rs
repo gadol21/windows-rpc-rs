@@ -183,3 +183,21 @@ pub struct Interface {
     pub version: InterfaceVersion,
     pub methods: Vec<Method>,
 }
+
+impl Interface {
+    /// Returns an iterator over all unique types in the interface (parameters and return types)
+    pub fn unique_types(&self) -> impl Iterator<Item = &Type> {
+        let mut seen = std::collections::HashSet::new();
+        self.methods
+            .iter()
+            .flat_map(|m| {
+                m.parameters
+                    .iter()
+                    .map(|p| &p.r#type)
+                    .chain(m.return_type.iter())
+            })
+            .filter(move |t| seen.insert((*t).clone()))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+}

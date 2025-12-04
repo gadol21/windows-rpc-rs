@@ -25,7 +25,8 @@ pub const FC_C_CSTRING: u8 = 0x22; // Conformant character string
 pub const FC_PAD: u8 = 0x5c; // Padding
 pub const FC_SIMPLE_POINTER: u8 = 0x8; // Simple pointer flag
 
-// NDR64 Transfer Syntax
+// Transfer Syntax GUIDs
+pub const RPC_TRANSFER_SYNTAX_NDR_GUID: u128 = 0x8A885D04_1CEB_11C9_9FE8_08002B104860;
 pub const RPC_TRANSFER_SYNTAX_NDR64_GUID: u128 = 0x71710533_beba_4937_8319_b5dbef9ccc36;
 
 // NDR64 Format Codes (for base types)
@@ -40,3 +41,12 @@ pub const NDR64_IS_OUT: u16 = 0x0010;
 pub const NDR64_IS_RETURN: u16 = 0x0020;
 pub const NDR64_IS_BASE_TYPE: u16 = 0x0040;
 pub const NDR64_IS_BY_VALUE: u16 = 0x0080;
+
+// MIDL_STUB_DESC values
+pub const MIDL_STUB_DESC_CHECK_BOUNDS: i32 = 1;
+pub const MIDL_STUB_DESC_VERSION: u32 = 0x60001;
+pub const MIDL_STUB_DESC_MIDL_VERSION: u32 = 0x8010274;
+pub const MIDL_STUB_DESC_M_FLAGS: usize = 0x2000001;
+
+// RPC_CLIENT_INTERFACE flags
+pub const RPC_CLIENT_INTERFACE_FLAGS: i32 = 0x02000000;

@@ -3,82 +3,24 @@ use quote::quote;
 use crate::types::{Interface, Type};
 
 pub fn generate_ndr64_type_format(interface: &Interface) -> Vec<u8> {
-    let mut type_format_bytes = vec![];
-    let mut seen_types = std::collections::HashSet::new();
-
     // Type fragments must be contiguous in memory (not separately boxed)
     // For NDR64, even base types need type descriptors that can be pointed to
     // Collect all unique types and write them sequentially into one Vec<u8>
-
-    for method in &interface.methods {
-        // Process parameters
-        for param in &method.parameters {
-            if !seen_types.contains(&param.r#type) {
-                seen_types.insert(param.r#type.clone());
-
-                // Create type fragment based on param type
-                match &param.r#type {
-                    Type::String => {
-                        // NDR64 string descriptor
-                        // Simplified for initial implementation
-                        type_format_bytes.push(0); // Placeholder
-                    }
-                    Type::Simple(bt) => {
-                        // Base types need a single-byte descriptor
-                        type_format_bytes.push(bt.to_ndr64_fc_value());
-                    }
-                }
-            }
-        }
-
-        // Process return type
-        if let Some(ref return_type) = method.return_type {
-            if !seen_types.contains(return_type) {
-                seen_types.insert(return_type.clone());
-
-                match return_type {
-                    Type::String => {
-                        type_format_bytes.push(0); // Placeholder
-                    }
-                    Type::Simple(bt) => {
-                        type_format_bytes.push(bt.to_ndr64_fc_value());
-                    }
-                }
-            }
-        }
-    }
-
-    type_format_bytes
+    interface
+        .unique_types()
+        .map(|t| match t {
+            Type::String => 0, // Placeholder
+            Type::Simple(bt) => bt.to_ndr64_fc_value(),
+        })
+        .collect()
 }
 
 // Helper to compute type offset in the ndr64_type_format buffer
 pub fn compute_type_offset(interface: &Interface, target_type: &Type) -> usize {
-    let mut offset = 0;
-    let mut seen_types = std::collections::HashSet::new();
-
-    for method in &interface.methods {
-        for param in &method.parameters {
-            if !seen_types.contains(&param.r#type) {
-                if &param.r#type == target_type {
-                    return offset;
-                }
-                seen_types.insert(param.r#type.clone());
-                offset += 1; // Each type descriptor is 1 byte for base types
-            }
-        }
-
-        if let Some(ref return_type) = method.return_type {
-            if !seen_types.contains(return_type) {
-                if return_type == target_type {
-                    return offset;
-                }
-                seen_types.insert(return_type.clone());
-                offset += 1;
-            }
-        }
-    }
-
-    0 // Not found
+    interface
+        .unique_types()
+        .position(|t| t == target_type)
+        .unwrap_or(0)
 }
 
 pub fn generate_ndr64_proc_buffer_code(interface: &Interface) -> proc_macro2::TokenStream {
