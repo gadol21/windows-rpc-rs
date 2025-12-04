@@ -22,10 +22,31 @@ fn generate_method(method: (usize, &Method)) -> proc_macro2::TokenStream {
     let method_index = method_index as u32;
     let method_name = format_ident!("{}", method.name);
     let parameters = method.parameters.iter().map(generate_parameter);
+
+    // Generate HSTRING conversions for string parameters
+    let string_conversions: Vec<_> = method
+        .parameters
+        .iter()
+        .filter(|p| matches!(p.r#type, Type::String))
+        .map(|param| {
+            let param_name = format_ident!("{}", param.name);
+            let hstring_name = format_ident!("__{}_hstring", param.name);
+            quote! {
+                let #hstring_name = HSTRING::from(#param_name);
+            }
+        })
+        .collect();
+
+    // Generate parameter propagation, using HSTRING variables for strings
     let parameters_propagation = method.parameters.iter().map(|param| {
-        param
-            .r#type
-            .rust_type_to_abi(format_ident!("{}", param.name))
+        if matches!(param.r#type, Type::String) {
+            let hstring_name = format_ident!("__{}_hstring", param.name);
+            quote! { #hstring_name.as_ptr() }
+        } else {
+            param
+                .r#type
+                .rust_type_to_abi(format_ident!("{}", param.name))
+        }
     });
 
     let (method_suffix, return_suffix) = if let Some(rtype) = &method.return_type
@@ -46,6 +67,7 @@ fn generate_method(method: (usize, &Method)) -> proc_macro2::TokenStream {
 
     quote! {
         pub fn #method_name(&self, #(#parameters),*) #return_suffix {
+            #(#string_conversions)*
             unsafe {
                 NdrClientCall3(&raw const *self.proxy_info as _, #method_index, std::ptr::null_mut(), self.binding.handle(), #(#parameters_propagation),*)#method_suffix
             }

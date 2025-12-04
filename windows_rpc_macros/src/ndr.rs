@@ -47,8 +47,8 @@ pub fn generate_type_format_string(interface: &Interface) -> (Vec<u8>, HashMap<P
                     // FC_RP [simple_pointer]
                     type_format.push(FC_RP);
                     type_format.push(FC_SIMPLE_POINTER);
-                    // FC_C_CSTRING
-                    type_format.push(FC_C_CSTRING);
+                    // FC_C_WSTRING (unicode wide string)
+                    type_format.push(FC_C_WSTRING);
                     type_format.push(FC_PAD);
                 } else if param.is_out {
                     // Pointer to pointer to conformant string (for [out] parameters)
@@ -62,8 +62,8 @@ pub fn generate_type_format_string(interface: &Interface) -> (Vec<u8>, HashMap<P
                     // FC_UP [simple_pointer]
                     type_format.push(FC_UP);
                     type_format.push(FC_SIMPLE_POINTER);
-                    // FC_C_CSTRING
-                    type_format.push(FC_C_CSTRING);
+                    // FC_C_WSTRING (unicode wide string)
+                    type_format.push(FC_C_WSTRING);
                     type_format.push(FC_PAD);
                 }
             }
@@ -116,8 +116,16 @@ pub fn generate_proc_header(
         // constant_server_buffer_size
         // This may be only a partial size, as the ServerMustSize flag triggers the sizing
         header.extend_from_slice(&ndr_fc_short(0)); // TODO
-        // INTERPRETER_OPT_FLAGS
-        header.push(0x40); // has ext // TODO
+        // INTERPRETER_OPT_FLAGS (OI2 flags)
+        let has_string_param = proc
+            .parameters
+            .iter()
+            .any(|p| matches!(p.r#type, Type::String));
+        let has_return = proc.return_type.is_some();
+        let oi2_flags = 0x40 // has ext
+            | if has_return { 0x04 } else { 0 } // has return
+            | if has_string_param { OI2_CLIENT_MUST_SIZE } else { 0 }; // client must size
+        header.push(oi2_flags);
         // Number of parameters
         header.push(proc.parameters.len().try_into().unwrap());
 

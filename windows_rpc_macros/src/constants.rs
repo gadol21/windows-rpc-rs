@@ -22,8 +22,12 @@ pub const PARAM_ATTRIBUTES_SERVER_ALLOC_SIZE_32: u16 = 0x8000;
 pub const FC_RP: u8 = 0x11; // Reference pointer
 pub const FC_UP: u8 = 0x12; // Unique pointer
 pub const FC_C_CSTRING: u8 = 0x22; // Conformant character string
+pub const FC_C_WSTRING: u8 = 0x25; // Conformant wide character string (unicode)
 pub const FC_PAD: u8 = 0x5c; // Padding
 pub const FC_SIMPLE_POINTER: u8 = 0x8; // Simple pointer flag
+
+// Procedure flags
+pub const OI2_CLIENT_MUST_SIZE: u8 = 0x02;
 
 // Transfer Syntax GUIDs
 pub const RPC_TRANSFER_SYNTAX_NDR_GUID: u128 = 0x8A885D04_1CEB_11C9_9FE8_08002B104860;
@@ -34,6 +38,7 @@ pub const NDR64_FC_INT8: u8 = 0x10;
 pub const NDR64_FC_INT16: u8 = 0x04;
 pub const NDR64_FC_INT32: u8 = 0x05;
 pub const NDR64_FC_INT64: u8 = 0x07;
+pub const NDR64_FC_CONF_WCHAR_STRING: u8 = 0x64; // Conformant wide character string
 
 // NDR64 Parameter Attributes
 pub const NDR64_IS_IN: u16 = 0x0008;
@@ -41,6 +46,12 @@ pub const NDR64_IS_OUT: u16 = 0x0010;
 pub const NDR64_IS_RETURN: u16 = 0x0020;
 pub const NDR64_IS_BASE_TYPE: u16 = 0x0040;
 pub const NDR64_IS_BY_VALUE: u16 = 0x0080;
+pub const NDR64_MUST_SIZE: u16 = 0x0001;
+pub const NDR64_MUST_FREE: u16 = 0x0002;
+pub const NDR64_IS_SIMPLE_REF: u16 = 0x0100;
+
+// NDR64 Procedure flags
+pub const NDR64_PROC_CLIENT_MUST_SIZE: u32 = 0x00040000;
 
 // MIDL_STUB_DESC values
 pub const MIDL_STUB_DESC_CHECK_BOUNDS: i32 = 1;

@@ -58,6 +58,15 @@ impl TryFrom<SynType> for Type {
     type Error = syn::Error;
 
     fn try_from(value: syn::Type) -> Result<Self, Self::Error> {
+        // Handle &str
+        if let SynType::Reference(ref_type) = &value {
+            if let SynType::Path(path) = &*ref_type.elem {
+                if path.path.is_ident("str") {
+                    return Ok(Self::String);
+                }
+            }
+        }
+
         let SynType::Path(path) = &value else {
             return Err(syn::Error::new_spanned(
                 value.to_token_stream(),
@@ -161,7 +170,8 @@ impl Parameter {
 
         match self.r#type {
             Type::String => {
-                // String parameters need special handling in NDR64
+                // String parameters need MustSize, MustFree, and SimpleRef flags
+                attributes |= NDR64_MUST_SIZE | NDR64_MUST_FREE | NDR64_IS_SIMPLE_REF;
             }
             Type::Simple(_) => attributes |= NDR64_IS_BASE_TYPE | NDR64_IS_BY_VALUE,
         }

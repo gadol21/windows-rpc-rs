@@ -6,6 +6,7 @@ trait TestRpc {
     fn NoParams() -> u64;
     fn SingleParamReturn(param: i32) -> i32;
     fn Sum(a: i32, b: i32) -> i32;
+    fn StringParam(s: &str);
 }
 
 #[test]
@@ -15,4 +16,5 @@ fn test() {
     assert_eq!(client.NoParams(), 0xffffffff + 1);
     assert_eq!(client.SingleParamReturn(10), 14);
     assert_eq!(client.Sum(10, 20), 30);
+    client.StringParam("Hello from Rust!");
 }
