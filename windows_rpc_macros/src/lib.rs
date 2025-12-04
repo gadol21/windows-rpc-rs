@@ -1,8 +1,90 @@
 use std::collections::HashMap;
 
 use quote::{ToTokens, format_ident, quote};
-use syn::{FnArg, Ident, ReturnType, TraitItem, Type as SynType};
+use syn::{
+    FnArg, Ident, LitFloat, LitInt, ReturnType, Token, TraitItem, Type as SynType, parse::Parse,
+};
 use windows::core::GUID;
+
+/// Parsed attributes for the rpc_interface macro
+struct InterfaceAttributes {
+    guid: u128,
+    version: InterfaceVersion,
+}
+
+impl Parse for InterfaceAttributes {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut guid: Option<u128> = None;
+        let mut version: Option<InterfaceVersion> = None;
+
+        while !input.is_empty() {
+            let ident: Ident = input.parse()?;
+            let content;
+            syn::parenthesized!(content in input);
+
+            match ident.to_string().as_str() {
+                "guid" => {
+                    let lit: LitInt = content.parse()?;
+                    guid = Some(lit.base10_parse::<u128>().map_err(|_| {
+                        syn::Error::new_spanned(&lit, "Expected a u128 hex literal for guid")
+                    })?);
+                }
+                "version" => {
+                    // Parse version as either "major.minor" float literal or two integers
+                    if content.peek(LitFloat) {
+                        let lit: LitFloat = content.parse()?;
+                        let version_str = lit.to_string();
+                        let parts: Vec<&str> = version_str.split('.').collect();
+                        if parts.len() != 2 {
+                            return Err(syn::Error::new_spanned(
+                                &lit,
+                                "Expected version format: major.minor",
+                            ));
+                        }
+                        let major: u16 = parts[0].parse().map_err(|_| {
+                            syn::Error::new_spanned(&lit, "Invalid major version number")
+                        })?;
+                        let minor: u16 = parts[1].parse().map_err(|_| {
+                            syn::Error::new_spanned(&lit, "Invalid minor version number")
+                        })?;
+                        version = Some(InterfaceVersion { major, minor });
+                    } else if content.peek(LitInt) {
+                        // Handle case like version(1) meaning 1.0
+                        let major_lit: LitInt = content.parse()?;
+                        let major: u16 = major_lit.base10_parse()?;
+                        let minor = if content.peek(Token![.]) {
+                            content.parse::<Token![.]>()?;
+                            let minor_lit: LitInt = content.parse()?;
+                            minor_lit.base10_parse()?
+                        } else {
+                            0
+                        };
+                        version = Some(InterfaceVersion { major, minor });
+                    } else {
+                        return Err(syn::Error::new(content.span(), "Expected version number"));
+                    }
+                }
+                other => {
+                    return Err(syn::Error::new_spanned(
+                        &ident,
+                        format!("Unknown attribute: {}", other),
+                    ));
+                }
+            }
+
+            // Consume optional comma
+            if input.peek(Token![,]) {
+                input.parse::<Token![,]>()?;
+            }
+        }
+
+        let guid =
+            guid.ok_or_else(|| syn::Error::new(input.span(), "Missing required 'guid' attribute"))?;
+        let version = version.unwrap_or_default();
+
+        Ok(InterfaceAttributes { guid, version })
+    }
+}
 
 #[allow(non_upper_case_globals)]
 const Oi_HAS_RPCFLAGS: u8 = 8;
@@ -909,6 +991,12 @@ pub fn rpc_interface(
     attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
+    // Parse interface attributes (guid and version)
+    let attrs: InterfaceAttributes = match syn::parse(attr) {
+        Ok(attrs) => attrs,
+        Err(e) => return e.to_compile_error().into(),
+    };
+
     let input_clone = input.clone();
     let t = match syn::parse2(input.into()) {
         Err(e) => {
@@ -985,10 +1073,8 @@ pub fn rpc_interface(
 
     let interface = Interface {
         name: t.ident.to_string(),
-        // FIXME: get this as attribute
-        uuid: GUID::from_u128(0x7a98c250_6808_11cf_b73b_00aa00b677a7),
-        // FIXME: get this as attribute
-        version: InterfaceVersion { major: 0, minor: 0 },
+        uuid: GUID::from_u128(attrs.guid),
+        version: attrs.version,
         methods,
     };
 
