@@ -2,8 +2,8 @@ use quote::{format_ident, quote};
 
 use crate::constants::{
     MIDL_STUB_DESC_CHECK_BOUNDS, MIDL_STUB_DESC_M_FLAGS, MIDL_STUB_DESC_MIDL_VERSION,
-    MIDL_STUB_DESC_VERSION, RPC_CLIENT_INTERFACE_FLAGS, RPC_TRANSFER_SYNTAX_NDR64_GUID,
-    RPC_TRANSFER_SYNTAX_NDR_GUID,
+    MIDL_STUB_DESC_VERSION, RPC_CLIENT_INTERFACE_FLAGS, RPC_TRANSFER_SYNTAX_NDR_GUID,
+    RPC_TRANSFER_SYNTAX_NDR64_GUID,
 };
 use crate::ndr::{generate_proc_header, generate_type_format_string};
 use crate::ndr64::{generate_ndr64_proc_buffer_code, generate_ndr64_type_format};

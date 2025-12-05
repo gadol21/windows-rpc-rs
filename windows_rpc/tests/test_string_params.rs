@@ -13,11 +13,7 @@ struct StringTestRpcImpl;
 impl StringTestRpcServerImpl for StringTestRpcImpl {
     fn echo_string(&self, message: &str) -> i32 {
         println!("Server received: {}", message);
-        if message == "Hello from Rust!" {
-            42
-        } else {
-            0
-        }
+        if message == "Hello from Rust!" { 42 } else { 0 }
     }
 
     fn get_length(&self, text: &str) -> u32 {

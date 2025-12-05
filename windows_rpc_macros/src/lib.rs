@@ -1,19 +1,19 @@
-mod codegen;
-mod server_codegen;
+mod client_codegen;
 #[allow(dead_code)]
 mod constants;
 mod ndr;
 mod ndr64;
 mod parse;
+mod server_codegen;
 mod types;
 
 use quote::ToTokens;
 use syn::{FnArg, ReturnType, TraitItem};
 use windows::core::GUID;
 
-use codegen::compile_client;
-use server_codegen::compile_server;
+use client_codegen::compile_client;
 use parse::InterfaceAttributes;
+use server_codegen::compile_server;
 use types::{Interface, Method, Parameter, Type};
 
 // FIXME: simplify by extracting to method that return Result<proc_macro2::TokenStream, Error>
@@ -115,5 +115,6 @@ pub fn rpc_interface(
     quote::quote! {
         #client_code
         #server_code
-    }.into()
+    }
+    .into()
 }

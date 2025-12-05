@@ -21,7 +21,7 @@ The project is organized as a Cargo workspace with two crates:
 2. The `rpc_interface` macro (in `windows_rpc_macros/src/lib.rs`) parses the trait
 3. The macro generates both client and server code:
 
-   **Client Side (`codegen.rs`):**
+   **Client Side (`client_codegen.rs`):**
    - `{Interface}Client` struct with all RPC metadata structures
    - NDR and NDR64 format strings (type descriptors, procedure headers)
    - Method implementations that call `NdrClientCall3` to perform RPC
@@ -40,7 +40,7 @@ The project is organized as a Cargo workspace with two crates:
 - Parses trait definitions and extracts methods, parameters, and return types
 - Calls both `compile_client()` and `compile_server()` to generate code
 
-**windows_rpc_macros/src/codegen.rs** (client generation):
+**windows_rpc_macros/src/client_codegen.rs** (client generation):
 - Generates the `{Interface}Client` struct with all RPC metadata
 - Creates NDR and NDR64 format strings for parameters and return values
 - Handles string parameters by converting Rust `&str` to `HSTRING` to `PCWSTR` for FFI
@@ -169,7 +169,7 @@ This split exists because some MIDL structures are only available in windows-sys
 
 ### Type Qualification Requirements
 
-**CRITICAL**: When generating code in `codegen.rs` and `server_codegen.rs`, **all types must be fully qualified** to avoid conflicts between the two crates. Examples:
+**CRITICAL**: When generating code in `client_codegen.rs` and `server_codegen.rs`, **all types must be fully qualified** to avoid conflicts between the two crates. Examples:
 - Use `windows::Win32::System::Rpc::RPC_CLIENT_INTERFACE` (not imported)
 - Use `windows_sys::Win32::System::Rpc::MIDL_STUB_DESC` (not imported)
 - Use `std::boxed::Box`, `std::option::Option`, `std::ptr::null_mut()`, etc.

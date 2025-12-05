@@ -1,9 +1,9 @@
 use std::ffi::c_void;
-use windows::core::{PCWSTR, Error, HSTRING};
 use windows::Win32::System::Rpc::{
+    RPC_C_LISTEN_MAX_CALLS_DEFAULT, RpcMgmtStopServerListening, RpcServerListen,
     RpcServerRegisterIf3, RpcServerUnregisterIf, RpcServerUseProtseqEpW,
-    RpcServerListen, RpcMgmtStopServerListening, RPC_C_LISTEN_MAX_CALLS_DEFAULT,
 };
+use windows::core::{Error, HSTRING, PCWSTR};
 
 /// Protocol sequences supported by the server
 #[derive(Debug, Clone, Copy)]
@@ -46,7 +46,8 @@ impl ServerBinding {
                 RPC_C_LISTEN_MAX_CALLS_DEFAULT,
                 PCWSTR::from_raw(endpoint_hstring.as_ptr()),
                 None, // No security descriptor
-            ).ok()?;
+            )
+            .ok()?;
         }
 
         Ok(ServerBinding {
@@ -73,7 +74,8 @@ impl ServerBinding {
                 u32::MAX, // Max RPC size
                 None,     // Security callback
                 None,     // Security descriptor
-            ).ok()?;
+            )
+            .ok()?;
         }
 
         self.registered = true;
@@ -92,7 +94,8 @@ impl ServerBinding {
                 1, // MinimumCallThreads
                 RPC_C_LISTEN_MAX_CALLS_DEFAULT,
                 0, // DontWait = false (blocking)
-            ).ok()?;
+            )
+            .ok()?;
         }
 
         Ok(())
@@ -110,7 +113,8 @@ impl ServerBinding {
                 1, // MinimumCallThreads
                 RPC_C_LISTEN_MAX_CALLS_DEFAULT,
                 1, // DontWait = true (non-blocking)
-            ).ok()?;
+            )
+            .ok()?;
         }
 
         Ok(())
