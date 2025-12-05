@@ -75,7 +75,7 @@ fn generate_method(method: (usize, &Method)) -> proc_macro2::TokenStream {
     }
 }
 
-pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
+pub fn compile_client(interface: &Interface) -> proc_macro2::TokenStream {
     let rpc_client_name = format_ident!("{}Client", interface.name);
     let interface_guid_name = format_ident!("{}_GUID", interface.name.to_uppercase());
     let interface_guid = interface.uuid.to_u128();
@@ -84,20 +84,20 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
     let methods = interface.methods.iter().enumerate().map(generate_method);
 
     // Generate NDR format strings
-    let (type_format, type_offsets) = generate_type_format_string(&interface);
+    let (type_format, type_offsets) = generate_type_format_string(interface);
     let type_format_len = type_format.len();
 
     // Generate proc header with type offsets
-    let (proc_header, format_offsets) = generate_proc_header(&interface, &type_offsets);
+    let (proc_header, format_offsets) = generate_proc_header(interface, &type_offsets);
     let proc_header_len = proc_header.len();
     let format_offsets_len = format_offsets.len();
 
     // Generate NDR64 format structures
-    let ndr64_type_format = generate_ndr64_type_format(&interface);
+    let ndr64_type_format = generate_ndr64_type_format(interface);
     let ndr64_type_format_len = ndr64_type_format.len();
 
     // Generate code to build proc buffer at runtime
-    let ndr64_proc_buffer_construction = generate_ndr64_proc_buffer_code(&interface);
+    let ndr64_proc_buffer_construction = generate_ndr64_proc_buffer_code(interface);
     let ndr64_proc_table_len = interface.methods.len();
     let proc_table_indices: Vec<_> = (0..ndr64_proc_table_len).collect();
 

@@ -178,7 +178,7 @@ fn generate_server_routine_table(interface: &Interface) -> proc_macro2::TokenStr
     }
 }
 
-pub fn compile_server(interface: Interface) -> proc_macro2::TokenStream {
+pub fn compile_server(interface: &Interface) -> proc_macro2::TokenStream {
     let rpc_server_name = format_ident!("{}Server", interface.name);
     let trait_name = format_ident!("{}ServerImpl", interface.name);
     let interface_guid_name = format_ident!("{}_GUID", interface.name.to_uppercase());
@@ -186,27 +186,27 @@ pub fn compile_server(interface: Interface) -> proc_macro2::TokenStream {
     let interface_version_minor = interface.version.minor;
 
     // Generate format strings (reused from client)
-    let (type_format, type_offsets) = generate_type_format_string(&interface);
+    let (type_format, type_offsets) = generate_type_format_string(interface);
     let type_format_len = type_format.len();
 
-    let (proc_header, format_offsets) = generate_proc_header(&interface, &type_offsets);
+    let (proc_header, format_offsets) = generate_proc_header(interface, &type_offsets);
     let proc_header_len = proc_header.len();
     let format_offsets_len = format_offsets.len();
 
-    let ndr64_type_format = generate_ndr64_type_format(&interface);
+    let ndr64_type_format = generate_ndr64_type_format(interface);
     let ndr64_type_format_len = ndr64_type_format.len();
 
-    let ndr64_proc_buffer_construction = generate_ndr64_proc_buffer_code(&interface);
+    let ndr64_proc_buffer_construction = generate_ndr64_proc_buffer_code(interface);
     let ndr64_proc_table_len = interface.methods.len();
     let proc_table_indices: Vec<_> = (0..ndr64_proc_table_len).collect();
 
     let method_count = interface.methods.len();
 
     // Generate components
-    let server_trait = generate_server_trait(&interface);
-    let wrapper_functions = generate_wrapper_functions(&interface);
-    let dispatch_table_init = generate_dispatch_table_init(&interface);
-    let server_routine_table = generate_server_routine_table(&interface);
+    let server_trait = generate_server_trait(interface);
+    let wrapper_functions = generate_wrapper_functions(interface);
+    let dispatch_table_init = generate_dispatch_table_init(interface);
+    let server_routine_table = generate_server_routine_table(interface);
 
     quote! {
         #server_trait

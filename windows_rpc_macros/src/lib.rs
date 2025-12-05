@@ -22,69 +22,53 @@ pub fn rpc_interface(
     attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
+    match rpc_interface_inner(attr.into(), input.into()) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+fn rpc_interface_inner(
+    attr: proc_macro2::TokenStream,
+    input: proc_macro2::TokenStream,
+) -> syn::Result<proc_macro2::TokenStream> {
     // Parse interface attributes (guid and version)
-    let attrs: InterfaceAttributes = match syn::parse(attr) {
-        Ok(attrs) => attrs,
-        Err(e) => return e.to_compile_error().into(),
-    };
+    let attrs: InterfaceAttributes = syn::parse2(attr)?;
 
     let input_clone = input.clone();
-    let t = match syn::parse2(input.into()) {
-        Err(e) => {
-            return e.to_compile_error().into();
-        }
-        Ok(syn::Item::Trait(t)) => t,
-        Ok(unrecognized) => {
-            return syn::Error::new_spanned(
-                &unrecognized,
-                "The #[rpc_interface] attribute cannot be used with this kind of item.",
-            )
-            .to_compile_error()
-            .into();
-        }
-    };
+    let t: syn::ItemTrait = syn::parse2(input.into())?;
 
     let mut methods = vec![];
     for item in t.items {
         let TraitItem::Fn(func) = item else {
-            return syn::Error::new_spanned(
+            return Err(syn::Error::new_spanned(
                 proc_macro2::TokenStream::from(input_clone),
                 "Only functions are allowed on this trait",
-            )
-            .into_compile_error()
-            .into();
+            ));
         };
 
         let return_type = match func.sig.output {
             ReturnType::Default => None,
-            ReturnType::Type(_, t) => match Type::try_from(*t) {
-                Ok(t) => Some(t),
-                Err(e) => return e.into_compile_error().into(),
-            },
+            ReturnType::Type(_, t) => Some(Type::try_from(*t)?),
         };
 
         let mut params = vec![];
         for param in func.sig.inputs {
             let FnArg::Typed(typed) = param else {
-                // FIXME: I'd like to support that (and even make that mandatory)
-                return syn::Error::new_spanned(
+                return Err(syn::Error::new_spanned(
                     proc_macro2::TokenStream::from(input_clone),
                     "Passing self is currently not supported",
-                )
-                .into_compile_error()
-                .into();
+                ));
             };
 
             let syn::Pat::Ident(param_name) = *typed.pat else {
-                return syn::Error::new_spanned(typed.pat.to_token_stream(), "Expected identifier")
-                    .into_compile_error()
-                    .into();
+                return Err(syn::Error::new_spanned(
+                    typed.pat.to_token_stream(),
+                    "Expected identifier",
+                ));
             };
 
-            let param_type = match Type::try_from(*typed.ty) {
-                Ok(t) => t,
-                Err(e) => return e.into_compile_error().into(),
-            };
+            let param_type = Type::try_from(*typed.ty)?;
 
             params.push(Parameter {
                 r#type: param_type,
@@ -109,12 +93,11 @@ pub fn rpc_interface(
         methods,
     };
 
-    let client_code = compile_client(interface.clone());
-    let server_code = compile_server(interface);
+    let client_code = compile_client(&interface);
+    let server_code = compile_server(&interface);
 
-    quote::quote! {
+    Ok(quote::quote! {
         #client_code
         #server_code
-    }
-    .into()
+    })
 }
