@@ -7,7 +7,7 @@ description = "Windows RPC for Rust"
 repository = "https://github.com/gadol21/windows-rpc-rs"
 
 [dependencies]
-windows-rpc-macros = { path = "../windows_rpc_macros" }
+windows-rpc-macros = { path = "../windows_rpc_macros", version = "0.0.1" }
 
 [dependencies.windows]
 version = "0.62"
