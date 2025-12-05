@@ -5,6 +5,7 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Windows RPC for Rust"
 repository = "https://github.com/gadol21/windows-rpc-rs"
+readme = "../README.md"
 
 [dependencies]
 windows-rpc-macros = { path = "../windows_rpc_macros", version = "0.0.1" }
@@ -27,3 +28,7 @@ features = [
     "Win32_System_Threading",
     "Win32_System_Rpc",
 ]
+
+[package.metadata.docs.rs]
+default-target = "x86_64-pc-windows-msvc"
+targets = []
