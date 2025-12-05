@@ -1,4 +1,4 @@
-use windows_rpc_macros::rpc_interface;
+use windows_rpc::rpc_interface;
 
 #[rpc_interface(guid(0x12345678_1234_1234_1234_123456789abc), version(1.0))]
 trait SimpleRpc {

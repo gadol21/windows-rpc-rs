@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 description = "Windows RPC for Rust"
 repository = "https://github.com/gadol21/windows-rpc-rs"
 
-[dev-dependencies]
+[dependencies]
 windows-rpc-macros = { path = "../windows_rpc_macros" }
 
 [dependencies.windows]

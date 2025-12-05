@@ -1,5 +1,3 @@
-#![doc = include_str!("../../README.md")]
-
 mod client_codegen;
 #[allow(dead_code)]
 mod constants;
