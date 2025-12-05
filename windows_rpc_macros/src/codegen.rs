@@ -32,7 +32,7 @@ fn generate_method(method: (usize, &Method)) -> proc_macro2::TokenStream {
             let param_name = format_ident!("{}", param.name);
             let hstring_name = format_ident!("__{}_hstring", param.name);
             quote! {
-                let #hstring_name = HSTRING::from(#param_name);
+                let #hstring_name = windows::core::HSTRING::from(#param_name);
             }
         })
         .collect();
@@ -69,7 +69,7 @@ fn generate_method(method: (usize, &Method)) -> proc_macro2::TokenStream {
         pub fn #method_name(&self, #(#parameters),*) #return_suffix {
             #(#string_conversions)*
             unsafe {
-                NdrClientCall3(&raw const *self.proxy_info as _, #method_index, std::ptr::null_mut(), self.binding.handle(), #(#parameters_propagation),*)#method_suffix
+                windows_sys::Win32::System::Rpc::NdrClientCall3(&raw const *self.proxy_info as _, #method_index, std::ptr::null_mut(), self.binding.handle(), #(#parameters_propagation),*)#method_suffix
             }
         }
     }
@@ -102,74 +102,53 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
     let proc_table_indices: Vec<_> = (0..ndr64_proc_table_len).collect();
 
     quote! {
-        use std::boxed::Box;
-        use windows::core::{GUID, HSTRING, PCWSTR};
-        use windows::Win32::System::Rpc::{
-            RPC_CLIENT_INTERFACE, RPC_DISPATCH_TABLE, RPC_SYNTAX_IDENTIFIER
-        };
-        use windows_sys::Win32::System::Rpc::{
-            MIDL_SERVER_INFO, MIDL_STUB_DESC, MIDL_STUBLESS_PROXY_INFO, NdrClientCall3,
-            MIDL_SYNTAX_INFO
-        };
-        use windows_rpc::client_binding::ClientBinding;
+        const #interface_guid_name: windows::core::GUID = windows::core::GUID::from_u128(#interface_guid);
 
-        const #interface_guid_name: GUID = GUID::from_u128(#interface_guid);
-
-        // FIXME: move to helper module
-        // RPC transfer syntax identifier for NDR
-        const RPC_TRANSFER_SYNTAX_2_0: RPC_SYNTAX_IDENTIFIER = RPC_SYNTAX_IDENTIFIER {
-            SyntaxGUID: GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
-            SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
-                MajorVersion: 2,
-                MinorVersion: 0,
-            },
-        };
-
-        struct #rpc_client_name {
-            binding: ClientBinding,
+        pub struct #rpc_client_name {
+            binding: windows_rpc::client_binding::ClientBinding,
             // metadata needed for RPC calls
-            proxy_info: Box<MIDL_STUBLESS_PROXY_INFO>,
-            stub_desc: Box<MIDL_STUB_DESC>,
-            syntax_info_array: Box<[MIDL_SYNTAX_INFO; 2]>,
-            client_interface: Box<RPC_CLIENT_INTERFACE>,
-            iface_handle: Box<*mut RPC_CLIENT_INTERFACE>,
-            rpc_transfer_syntax_ndr: Box<RPC_SYNTAX_IDENTIFIER>,
-            rpc_transfer_syntax_ndr64: Box<RPC_SYNTAX_IDENTIFIER>,
-            type_format: Box<[u8; #type_format_len]>,
-            proc_header: Box<[u8; #proc_header_len]>,
-            format_offsets: Box<[u16; #format_offsets_len]>,
+            proxy_info: std::boxed::Box<windows_sys::Win32::System::Rpc::MIDL_STUBLESS_PROXY_INFO>,
+            stub_desc: std::boxed::Box<windows_sys::Win32::System::Rpc::MIDL_STUB_DESC>,
+            syntax_info_array: std::boxed::Box<[windows_sys::Win32::System::Rpc::MIDL_SYNTAX_INFO; 2]>,
+            client_interface: std::boxed::Box<windows::Win32::System::Rpc::RPC_CLIENT_INTERFACE>,
+            iface_handle: std::boxed::Box<*mut windows::Win32::System::Rpc::RPC_CLIENT_INTERFACE>,
+            rpc_transfer_syntax_ndr: std::boxed::Box<windows::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER>,
+            rpc_transfer_syntax_ndr64: std::boxed::Box<windows::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER>,
+            type_format: std::boxed::Box<[u8; #type_format_len]>,
+            proc_header: std::boxed::Box<[u8; #proc_header_len]>,
+            format_offsets: std::boxed::Box<[u16; #format_offsets_len]>,
             // NDR64 format data (contiguous memory)
-            ndr64_type_format: Box<[u8; #ndr64_type_format_len]>,
-            ndr64_proc_buffer: Box<Vec<u8>>,  // Built at runtime, variable size
-            ndr64_proc_table: Box<[*const u8; #ndr64_proc_table_len]>,
-            auto_bind_handle: Box<*mut core::ffi::c_void>,
+            ndr64_type_format: std::boxed::Box<[u8; #ndr64_type_format_len]>,
+            ndr64_proc_buffer: std::boxed::Box<std::vec::Vec<u8>>,  // Built at runtime, variable size
+            ndr64_proc_table: std::boxed::Box<[*const u8; #ndr64_proc_table_len]>,
+            auto_bind_handle: std::boxed::Box<*mut std::ffi::c_void>,
         }
 
         impl #rpc_client_name {
-            pub fn new(binding: ClientBinding) -> Self {
-                let mut auto_bind_handle = Box::new(std::ptr::null_mut());
-                let mut type_format: Box<[u8; #type_format_len]> = Box::new([#(#type_format),*]);
-                let mut proc_header: Box<[u8; #proc_header_len]> = Box::new([#(#proc_header),*]);
-                let mut format_offsets: Box<[u16; #format_offsets_len]> = Box::new([#(#format_offsets),*]);
+            pub fn new(binding: windows_rpc::client_binding::ClientBinding) -> Self {
+                let mut auto_bind_handle = std::boxed::Box::new(std::ptr::null_mut());
+                let mut type_format: std::boxed::Box<[u8; #type_format_len]> = std::boxed::Box::new([#(#type_format),*]);
+                let mut proc_header: std::boxed::Box<[u8; #proc_header_len]> = std::boxed::Box::new([#(#proc_header),*]);
+                let mut format_offsets: std::boxed::Box<[u16; #format_offsets_len]> = std::boxed::Box::new([#(#format_offsets),*]);
 
                 // Initialize NDR64 data structures
-                let ndr64_type_format: Box<[u8; #ndr64_type_format_len]> =
-                    Box::new([#(#ndr64_type_format),*]);
+                let ndr64_type_format: std::boxed::Box<[u8; #ndr64_type_format_len]> =
+                    std::boxed::Box::new([#(#ndr64_type_format),*]);
 
                 // Build proc buffer at runtime (so pointers to ndr64_type_format are valid)
                 let (ndr64_proc_buffer_data, proc_table_offsets) = #ndr64_proc_buffer_construction;
 
-                let ndr64_proc_buffer = Box::new(ndr64_proc_buffer_data);
+                let ndr64_proc_buffer = std::boxed::Box::new(ndr64_proc_buffer_data);
 
                 // Build Ndr64ProcTable - array of pointers into proc_buffer
-                let ndr64_proc_table: Box<[*const u8; #ndr64_proc_table_len]> = {
+                let ndr64_proc_table: std::boxed::Box<[*const u8; #ndr64_proc_table_len]> = {
                     let base_ptr = ndr64_proc_buffer.as_ptr();
-                    Box::new([
+                    std::boxed::Box::new([
                         #(unsafe { base_ptr.add(proc_table_offsets[#proc_table_indices]) }),*
                     ])
                 };
 
-                let mut rpc_transfer_syntax_ndr = Box::new(RPC_SYNTAX_IDENTIFIER {
+                let mut rpc_transfer_syntax_ndr = std::boxed::Box::new(windows::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER {
                     SyntaxGUID: windows::core::GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
                     SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
                         MajorVersion: 2,
@@ -178,7 +157,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                 });
 
                 // Create NDR64 transfer syntax
-                let rpc_transfer_syntax_ndr64 = Box::new(RPC_SYNTAX_IDENTIFIER {
+                let rpc_transfer_syntax_ndr64 = std::boxed::Box::new(windows::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER {
                     SyntaxGUID: windows::core::GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR64_GUID),
                     SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
                         MajorVersion: 1,
@@ -186,12 +165,12 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                     },
                 });
 
-                let mut iface_handle = Box::new(std::ptr::null_mut());
+                let mut iface_handle = std::boxed::Box::new(std::ptr::null_mut());
 
                 // Create array of two syntax infos
-                let mut syntax_info_array = Box::new([
+                let mut syntax_info_array = std::boxed::Box::new([
                     // NDR 2.0 syntax info (index 0)
-                    MIDL_SYNTAX_INFO {
+                    windows_sys::Win32::System::Rpc::MIDL_SYNTAX_INFO {
                         TransferSyntax: windows_sys::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER {
                             SyntaxGUID: windows_sys::core::GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
                             SyntaxVersion: windows_sys::Win32::System::Rpc::RPC_VERSION {
@@ -208,7 +187,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                         pReserved2: 0,
                     },
                     // NDR64 1.0 syntax info (index 1)
-                    MIDL_SYNTAX_INFO {
+                    windows_sys::Win32::System::Rpc::MIDL_SYNTAX_INFO {
                         TransferSyntax: windows_sys::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER {
                             SyntaxGUID: windows_sys::core::GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR64_GUID),
                             SyntaxVersion: windows_sys::Win32::System::Rpc::RPC_VERSION {
@@ -225,11 +204,11 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                         pReserved2: 0,
                     },
                 ]);
-                let mut stub_desc = Box::new(MIDL_STUB_DESC {
+                let mut stub_desc = std::boxed::Box::new(windows_sys::Win32::System::Rpc::MIDL_STUB_DESC {
                     // Will be filled later
                     RpcInterfaceInformation: std::ptr::null_mut(),
-                    pfnAllocate: Some(windows_rpc::alloc::midl_alloc),
-                    pfnFree: Some(windows_rpc::alloc::midl_free),
+                    pfnAllocate: std::option::Option::Some(windows_rpc::alloc::midl_alloc),
+                    pfnFree: std::option::Option::Some(windows_rpc::alloc::midl_free),
                     IMPLICIT_HANDLE_INFO: windows_sys::Win32::System::Rpc::MIDL_STUB_DESC_0 {
                         pAutoHandle: &raw mut *auto_bind_handle,
                     },
@@ -252,7 +231,7 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                     pExprInfo: std::ptr::null(),
                 });
                 // Update proxy info to point to dual syntax array
-                let mut proxy_info = Box::new(MIDL_STUBLESS_PROXY_INFO {
+                let mut proxy_info = std::boxed::Box::new(windows_sys::Win32::System::Rpc::MIDL_STUBLESS_PROXY_INFO {
                     pStubDesc: &raw mut *stub_desc,
                     ProcFormatString: proc_header.as_mut_ptr(),
                     FormatStringOffset: format_offsets.as_mut_ptr(),
@@ -263,17 +242,17 @@ pub fn compile_client(interface: Interface) -> proc_macro2::TokenStream {
                 // Circular dependency fixup
                 stub_desc.ProxyServerInfo = &raw mut *proxy_info as _;
 
-                let mut client_interface= Box::new(RPC_CLIENT_INTERFACE {
-                    Length: std::mem::size_of::<RPC_CLIENT_INTERFACE>() as u32,
-                    InterfaceId: RPC_SYNTAX_IDENTIFIER {
+                let mut client_interface= std::boxed::Box::new(windows::Win32::System::Rpc::RPC_CLIENT_INTERFACE {
+                    Length: std::mem::size_of::<windows::Win32::System::Rpc::RPC_CLIENT_INTERFACE>() as u32,
+                    InterfaceId: windows::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER {
                         SyntaxGUID: #interface_guid_name,
                         SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
                             MajorVersion: #interface_version_major,
                             MinorVersion: #interface_version_minor,
                         },
                     },
-                    TransferSyntax: RPC_SYNTAX_IDENTIFIER {
-                        SyntaxGUID: GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
+                    TransferSyntax: windows::Win32::System::Rpc::RPC_SYNTAX_IDENTIFIER {
+                        SyntaxGUID: windows::core::GUID::from_u128(#RPC_TRANSFER_SYNTAX_NDR_GUID),
                         SyntaxVersion: windows::Win32::System::Rpc::RPC_VERSION {
                             MajorVersion: 2,
                             MinorVersion: 0,

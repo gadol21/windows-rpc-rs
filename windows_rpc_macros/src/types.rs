@@ -4,7 +4,7 @@ use windows::core::GUID;
 
 use crate::constants::*;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct InterfaceVersion {
     pub major: u16,
     pub minor: u16,
@@ -180,13 +180,14 @@ impl Parameter {
     }
 }
 
+#[derive(Clone)]
 pub struct Method {
     pub return_type: Option<Type>,
     pub name: String,
     pub parameters: Vec<Parameter>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Interface {
     pub name: String,
     pub uuid: GUID,

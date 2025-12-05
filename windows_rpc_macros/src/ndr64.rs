@@ -71,7 +71,10 @@ pub fn generate_ndr64_proc_buffer_code(interface: &Interface) -> proc_macro2::To
         } else {
             (method.parameters.len() * std::mem::size_of::<usize>()) as u32
         };
-        let constant_server_buffer_size = if has_return { 8u32 } else { 0u32 };
+
+        // Add one usize for binding handle.
+        let constant_server_buffer_size =
+            std::mem::size_of::<usize>() as u32 + if has_return { 8u32 } else { 0u32 };
 
         // Generate proc format struct
         let proc_format = quote! {

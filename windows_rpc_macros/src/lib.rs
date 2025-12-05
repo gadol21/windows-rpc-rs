@@ -1,4 +1,5 @@
 mod codegen;
+mod server_codegen;
 #[allow(dead_code)]
 mod constants;
 mod ndr;
@@ -11,6 +12,7 @@ use syn::{FnArg, ReturnType, TraitItem};
 use windows::core::GUID;
 
 use codegen::compile_client;
+use server_codegen::compile_server;
 use parse::InterfaceAttributes;
 use types::{Interface, Method, Parameter, Type};
 
@@ -107,5 +109,11 @@ pub fn rpc_interface(
         methods,
     };
 
-    compile_client(interface).into()
+    let client_code = compile_client(interface.clone());
+    let server_code = compile_server(interface);
+
+    quote::quote! {
+        #client_code
+        #server_code
+    }.into()
 }
