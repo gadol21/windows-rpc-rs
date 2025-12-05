@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+
 mod client_codegen;
 #[allow(dead_code)]
 mod constants;
@@ -36,13 +38,13 @@ fn rpc_interface_inner(
     let attrs: InterfaceAttributes = syn::parse2(attr)?;
 
     let input_clone = input.clone();
-    let t: syn::ItemTrait = syn::parse2(input.into())?;
+    let t: syn::ItemTrait = syn::parse2(input)?;
 
     let mut methods = vec![];
     for item in t.items {
         let TraitItem::Fn(func) = item else {
             return Err(syn::Error::new_spanned(
-                proc_macro2::TokenStream::from(input_clone),
+                input_clone,
                 "Only functions are allowed on this trait",
             ));
         };
@@ -56,7 +58,7 @@ fn rpc_interface_inner(
         for param in func.sig.inputs {
             let FnArg::Typed(typed) = param else {
                 return Err(syn::Error::new_spanned(
-                    proc_macro2::TokenStream::from(input_clone),
+                    input_clone,
                     "Passing self is currently not supported",
                 ));
             };

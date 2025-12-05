@@ -27,10 +27,8 @@ pub fn generate_type_format_string(interface: &Interface) -> (Vec<u8>, HashMap<P
     let mut types_to_process = Vec::new();
     for method in &interface.methods {
         for param in &method.parameters {
-            if !matches!(param.r#type, Type::Simple(_)) {
-                if !type_offsets.contains_key(param) {
-                    types_to_process.push(param.clone());
-                }
+            if !matches!(param.r#type, Type::Simple(_)) && !type_offsets.contains_key(param) {
+                types_to_process.push(param.clone());
             }
         }
     }

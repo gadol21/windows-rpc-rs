@@ -6,7 +6,9 @@
 1. Add support for out params (`&mut MaybeUninit<T>`?)
 1. Check with heap verifier
 1. Add support for binding context to a server instance (to pass &self param)
-1. Reexport windows types from windows_rpc, and use them in the macros crate?
+1. Reexport windows types from windows_rpc, and use them in the macros crate? (to not force users of our crates to add windows and windows-sys dependencies)
+1. Handle SEH errors (for example server unavailable is a very common one, access denied too)
+1. Expose ways to secure access to servers
 
 ## Consider implementing
 1. Pass COM interfaces

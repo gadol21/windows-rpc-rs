@@ -24,7 +24,7 @@ pub enum BaseType {
 }
 
 impl BaseType {
-    pub fn to_fc_value(&self) -> u8 {
+    pub fn to_fc_value(self) -> u8 {
         match self {
             BaseType::U8 => 1,
             BaseType::I8 => 2,
@@ -37,7 +37,7 @@ impl BaseType {
         }
     }
 
-    pub fn to_ndr64_fc_value(&self) -> u8 {
+    pub fn to_ndr64_fc_value(self) -> u8 {
         match self {
             BaseType::U8 | BaseType::I8 => NDR64_FC_INT8,
             BaseType::U16 | BaseType::I16 => NDR64_FC_INT16,

@@ -13,7 +13,7 @@ pub enum ProtocolSequence {
 }
 
 impl ProtocolSequence {
-    fn to_pcwstr(&self) -> PCWSTR {
+    fn to_pcwstr(self) -> PCWSTR {
         match self {
             ProtocolSequence::Alpc => windows::core::w!("ncalrpc"),
         }

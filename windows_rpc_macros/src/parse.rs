@@ -63,7 +63,7 @@ impl Parse for InterfaceAttributes {
                 other => {
                     return Err(syn::Error::new_spanned(
                         &ident,
-                        format!("Unknown attribute: {}", other),
+                        format!("Unknown attribute: {other}"),
                     ));
                 }
             }
