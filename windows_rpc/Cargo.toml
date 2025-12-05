@@ -30,5 +30,4 @@ features = [
 ]
 
 [package.metadata.docs.rs]
-default-target = "x86_64-pc-windows-msvc"
-targets = []
+targets = ["x86_64-pc-windows-msvc"]

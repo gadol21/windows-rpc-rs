@@ -16,6 +16,8 @@
 //!
 //! There is a lot of additional work required to support more complex types, add the ability to secure interfaces, and handling SEH exceptions.
 
+#![cfg(windows)]
+
 #[doc(hidden)]
 pub mod alloc;
 pub mod client_binding;

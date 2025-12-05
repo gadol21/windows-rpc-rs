@@ -1,3 +1,7 @@
+//! Macro helper crate for windows-rpc
+
+#![cfg(windows)]
+
 mod client_codegen;
 #[allow(dead_code)]
 mod constants;
