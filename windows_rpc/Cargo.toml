@@ -2,6 +2,7 @@
 name = "windows-rpc"
 version = "0.0.1"
 edition = "2024"
+license = "MIT OR Apache-2.0"
 
 [dev-dependencies]
 windows-rpc-macros = { path = "../windows_rpc_macros" }
