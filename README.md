@@ -1,4 +1,8 @@
 # Windows-rpc
+[![check](https://github.com/gadol21/windows-rpc-rs/actions/workflows/.github/workflows/check.yml/badge.svg?branch=main)](https://github.com/gadol21/windows-rpc-rs/blob/main/.github/workflows/check.yml)
+[![crates.io](https://img.shields.io/crates/v/windows-rpc.svg)](https://crates.io/crates/windows-rpc)
+[![docs.rs](https://docs.rs/windows-rpc/badge.svg)](https://docs.rs/crate/windows-rpc)
+
 The `windows-rpc` and `windows-rpc-macros` crates let you generate Windows RPC interfaces, and generate the structs and stubs that are needed to make RPC calls, and host RPC servers in Rust code.
 
 The idea is for you to describe the interface as a trait, and apply a proc macro to mark it as an interface -

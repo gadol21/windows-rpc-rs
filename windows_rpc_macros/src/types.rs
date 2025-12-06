@@ -58,12 +58,11 @@ impl TryFrom<SynType> for Type {
 
     fn try_from(value: syn::Type) -> Result<Self, Self::Error> {
         // Handle &str
-        if let SynType::Reference(ref_type) = &value {
-            if let SynType::Path(path) = &*ref_type.elem {
-                if path.path.is_ident("str") {
-                    return Ok(Self::String);
-                }
-            }
+        if let SynType::Reference(ref_type) = &value
+            && let SynType::Path(path) = &*ref_type.elem
+            && path.path.is_ident("str")
+        {
+            return Ok(Self::String);
         }
 
         let SynType::Path(path) = &value else {
