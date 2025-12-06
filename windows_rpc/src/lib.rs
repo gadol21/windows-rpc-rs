@@ -11,7 +11,7 @@
 //!
 //! ```rust
 //! use windows_rpc::rpc_interface;
-//! use windows_rpc::client_binding::{ClientBinding, ProtocolSequence};
+//! use windows_rpc::{ProtocolSequence, client_binding::ClientBinding};
 //!
 //! #[rpc_interface(guid(0x12345678_1234_1234_1234_123456789abc), version(1.0))]
 //! trait Calculator {
@@ -61,7 +61,7 @@
 //!
 //! ```rust,no_run
 //! use windows_rpc::rpc_interface;
-//! use windows_rpc::client_binding::{ClientBinding, ProtocolSequence};
+//! use windows_rpc::{ProtocolSequence, client_binding::ClientBinding};
 //!
 //! #[rpc_interface(guid(0x12345678_1234_1234_1234_123456789abc), version(1.0))]
 //! trait Calculator {
@@ -136,7 +136,6 @@
 //! - Thread-local context is used safely for server dispatch
 //!
 //! However, bugs in this crate could lead to memory corruption or undefined behavior.
-
 #![cfg(windows)]
 
 #[doc(hidden)]
@@ -147,3 +146,39 @@ pub mod server;
 pub mod server_binding;
 
 pub use windows_rpc_macros::rpc_interface;
+
+/// Protocol sequence for RPC communication.
+///
+/// Specifies the transport protocol used for RPC calls.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use windows_rpc::{ProtocolSequence, client_binding::ClientBinding};
+///
+/// # fn main() -> windows::core::Result<()> {
+/// // Connect using local RPC (ALPC)
+/// let binding = ClientBinding::new(ProtocolSequence::Alpc, "my_endpoint")?;
+/// # Ok(())
+/// # }
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ProtocolSequence {
+    /// ALPC (Advanced Local Procedure Call) - local RPC on the same machine.
+    ///
+    /// Uses the `ncalrpc` protocol sequence. This is the fastest option for
+    /// communication between processes on the same Windows machine.
+    Alpc,
+    // TODO: test and add
+    //Tcp,
+    //Udp,
+    //NamedPipe
+}
+
+impl ProtocolSequence {
+    fn to_pcwstr(self) -> windows::core::PCWSTR {
+        match self {
+            ProtocolSequence::Alpc => windows::core::w!("ncalrpc"),
+        }
+    }
+}

@@ -1,5 +1,5 @@
-use windows_rpc::client_binding::{ClientBinding, ProtocolSequence};
 use windows_rpc::rpc_interface;
+use windows_rpc::{ProtocolSequence, client_binding::ClientBinding};
 
 #[rpc_interface(guid(0x12345678_1234_1234_1234_123456789abc), version(1.0))]
 trait TestRpc {

@@ -447,7 +447,7 @@ pub fn compile_server(interface: &Interface) -> proc_macro2::TokenStream {
                 }
 
                 let binding = windows_rpc::server_binding::ServerBinding::new(
-                    windows_rpc::server_binding::ProtocolSequence::Alpc,
+                    windows_rpc::ProtocolSequence::Alpc,
                     endpoint,
                     &raw const *self.server_interface as *const _ as *const std::ffi::c_void,
                 )?;

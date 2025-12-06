@@ -10,43 +10,7 @@ use windows::{
     core::HSTRING,
 };
 
-/// Protocol sequence for RPC communication.
-///
-/// Specifies the transport protocol used for RPC calls.
-///
-/// # Example
-///
-/// ```rust,no_run
-/// use windows_rpc::client_binding::{ClientBinding, ProtocolSequence};
-///
-/// # fn main() -> windows::core::Result<()> {
-/// // Connect using local RPC (ALPC)
-/// let binding = ClientBinding::new(ProtocolSequence::Alpc, "my_endpoint")?;
-/// # Ok(())
-/// # }
-/// ```
-pub enum ProtocolSequence {
-    /// ALPC (Advanced Local Procedure Call) - local RPC on the same machine.
-    ///
-    /// Uses the `ncalrpc` protocol sequence. This is the fastest option for
-    /// communication between processes on the same Windows machine.
-    Alpc,
-    // FIXME: test and add
-    //Tcp,
-    //Udp,
-    //NamedPipe
-}
-
-impl ProtocolSequence {
-    fn to_string(&self) -> &'static str {
-        match self {
-            ProtocolSequence::Alpc => "ncalrpc",
-            //ProtocolSequence::Tcp => "ncacn_ip_tcp",
-            //ProtocolSequence::Http => "ncacn_http",
-            //ProtocolSequence::NamedPipe => "ncacn_np",
-        }
-    }
-}
+use crate::ProtocolSequence;
 
 /// An RPC client binding handle.
 ///
@@ -61,7 +25,7 @@ impl ProtocolSequence {
 /// # #[rpc_interface(guid(0x12345678_1234_1234_1234_123456789abc), version(1.0))]
 /// # trait MyInterface {
 /// # }
-/// use windows_rpc::client_binding::{ClientBinding, ProtocolSequence};
+/// use windows_rpc::{ProtocolSequence, client_binding::ClientBinding};
 ///
 /// # fn main() -> windows::core::Result<()> {
 /// let binding = ClientBinding::new(ProtocolSequence::Alpc, "my_endpoint")?;
@@ -95,7 +59,7 @@ impl ClientBinding {
     /// # Example
     ///
     /// ```rust
-    /// use windows_rpc::client_binding::{ClientBinding, ProtocolSequence};
+    /// use windows_rpc::{ProtocolSequence, client_binding::ClientBinding};
     ///
     /// # fn main() -> windows::core::Result<()> {
     /// let binding = ClientBinding::new(ProtocolSequence::Alpc, "calculator_endpoint")?;
@@ -108,7 +72,7 @@ impl ClientBinding {
             RpcStringBindingComposeW(
                 // TODO: pass obj uuid, could replace the endpoint/network addr
                 None,
-                &HSTRING::from(protocol.to_string()),
+                protocol.to_pcwstr(),
                 None,
                 &HSTRING::from(endpoint),
                 None,

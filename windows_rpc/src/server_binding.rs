@@ -10,25 +10,7 @@ use windows::Win32::System::Rpc::{
 };
 use windows::core::{Error, HSTRING, PCWSTR};
 
-/// Protocol sequence for RPC server communication.
-///
-/// Specifies the transport protocol the server will use to accept RPC calls.
-#[derive(Debug, Clone, Copy)]
-pub enum ProtocolSequence {
-    /// ALPC (Advanced Local Procedure Call) - local RPC on the same machine.
-    ///
-    /// Uses the `ncalrpc` protocol sequence. This is the only currently
-    /// supported protocol.
-    Alpc,
-}
-
-impl ProtocolSequence {
-    fn to_pcwstr(self) -> PCWSTR {
-        match self {
-            ProtocolSequence::Alpc => windows::core::w!("ncalrpc"),
-        }
-    }
-}
+use crate::ProtocolSequence;
 
 /// Manages the lifecycle of an RPC server.
 ///
