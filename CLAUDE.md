@@ -85,24 +85,22 @@ cargo build
 
 ### Running Tests
 ```bash
-# Run all integration tests (excluding test_sanity which requires external server)
-cargo test --test test_client_server --test test_string_params --test test_server_simple
+# Run all integration tests
+cargo test --test test_client_server --test test_server_simple
 
 # Run a specific test
 cargo test --test test_client_server
 
 # Run a specific test with output
-cargo test --test test_string_params -- --nocapture
+cargo test --test test_client_server -- --nocapture
 
 # Run single-threaded (useful for debugging server tests)
 cargo test --test test_client_server -- --test-threads=1
 ```
 
 ### Test Structure
-- `test_client_server.rs`: Basic client-server integration test with integer parameters
-- `test_string_params.rs`: Tests string parameter handling in both client and server
+- `test_client_server.rs`: Full client-server integration test with integer and string parameters
 - `test_server_simple.rs`: Tests server creation and registration without client calls
-- `test_sanity.rs`: Requires external RPC server (used for manual testing against C++ server)
 
 ## Type System
 

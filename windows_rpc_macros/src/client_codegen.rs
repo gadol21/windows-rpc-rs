@@ -78,7 +78,7 @@ fn generate_method(method: (usize, &Method)) -> proc_macro2::TokenStream {
 pub fn compile_client(interface: &Interface) -> proc_macro2::TokenStream {
     let rpc_client_name = format_ident!("{}Client", interface.name);
     let interface_guid_name = format_ident!("{}_GUID", interface.name.to_uppercase());
-    let interface_guid = interface.uuid.to_u128();
+    let interface_guid = interface.uuid;
     let interface_version_major = interface.version.major;
     let interface_version_minor = interface.version.minor;
     let methods = interface.methods.iter().enumerate().map(generate_method);

@@ -1,4 +1,9 @@
-//! Macro helper crate for windows-rpc
+//! Procedural macros for generating Windows RPC client and server code.
+//!
+//! This crate provides the [`macro@rpc_interface`] attribute macro that transforms
+//! Rust trait definitions into fully functional Windows RPC clients and servers.
+//!
+//! See the [`windows_rpc`](https://docs.rs/windows-rpc) crate for the main documentation and examples.
 
 #![cfg(windows)]
 
@@ -13,14 +18,111 @@ mod types;
 
 use quote::ToTokens;
 use syn::{FnArg, ReturnType, TraitItem};
-use windows::core::GUID;
 
 use client_codegen::compile_client;
 use parse::InterfaceAttributes;
 use server_codegen::compile_server;
 use types::{Interface, Method, Parameter, Type};
 
-// FIXME: simplify by extracting to method that return Result<proc_macro2::TokenStream, Error>
+/// Generates Windows RPC client and server code from a trait definition.
+///
+/// This attribute macro transforms a Rust trait into a complete Windows RPC interface,
+/// generating both client and server implementations that handle all the NDR marshalling,
+/// format strings, and Windows RPC runtime integration automatically.
+///
+/// # Arguments
+///
+/// The macro requires two arguments:
+///
+/// - `guid(...)` - A unique interface identifier (UUID/GUID) in hexadecimal format
+/// - `version(major.minor)` - The interface version number
+///
+/// # Generated Types
+///
+/// For a trait named `MyInterface`, the macro generates:
+///
+/// - **`MyInterfaceClient`** - A struct for making RPC calls to a server
+/// - **`MyInterfaceServerImpl`** - A trait to implement for hosting a server
+/// - **`MyInterfaceServer`** - A struct that wraps your implementation and handles RPC dispatch
+///
+/// # Supported Types
+///
+/// The following Rust types can be used for parameters and return values:
+///
+/// | Rust Type | NDR Type | Notes |
+/// |-----------|----------|-------|
+/// | `i8` | FC_SMALL | Signed 8-bit integer |
+/// | `u8` | FC_USMALL | Unsigned 8-bit integer |
+/// | `i16` | FC_SHORT | Signed 16-bit integer |
+/// | `u16` | FC_USHORT | Unsigned 16-bit integer |
+/// | `i32` | FC_LONG | Signed 32-bit integer |
+/// | `u32` | FC_ULONG | Unsigned 32-bit integer |
+/// | `i64` | FC_HYPER | Signed 64-bit integer |
+/// | `u64` | FC_HYPER | Unsigned 64-bit integer |
+/// | `&str` | Conformant string | Input parameters only |
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use windows_rpc::rpc_interface;
+/// use windows_rpc::client_binding::{ClientBinding, ProtocolSequence};
+///
+/// // Define the RPC interface
+/// #[rpc_interface(guid(0x12345678_1234_1234_1234_123456789abc), version(1.0))]
+/// trait Calculator {
+///     fn add(a: i32, b: i32) -> i32;
+///     fn multiply(x: i32, y: i32) -> i32;
+///     fn greet(name: &str) -> u32;
+/// }
+///
+/// // Implement the server
+/// struct CalculatorImpl;
+/// impl CalculatorServerImpl for CalculatorImpl {
+///     fn add(&self, a: i32, b: i32) -> i32 {
+///         a + b
+///     }
+///     fn multiply(&self, x: i32, y: i32) -> i32 {
+///         x * y
+///     }
+///     fn greet(&self, name: &str) -> u32 {
+///         println!("Hello, {name}!");
+///         0
+///     }
+/// }
+///
+/// // Start the server
+/// let mut server = CalculatorServer::new(CalculatorImpl);
+/// server.register("my_endpoint").expect("Failed to register");
+/// server.listen_async().expect("Failed to listen");
+///
+/// // Create a client and call methods
+/// let binding = ClientBinding::new(ProtocolSequence::Alpc, "my_endpoint")
+///     .expect("Failed to create binding");
+/// let client = CalculatorClient::new(binding);
+///
+/// assert_eq!(client.add(10, 20), 30);
+/// assert_eq!(client.multiply(5, 6), 30);
+///
+/// server.stop().expect("Failed to stop");
+/// ```
+///
+/// # Limitations
+///
+/// - Only ALPC (local RPC) protocol is currently supported
+/// - No support for output (`[out]`) or input-output (`[in, out]`) parameters
+/// - No support for pointer types, structs, arrays, or other complex types
+/// - No interface security (authentication/authorization) support
+/// - No SEH exception handling
+/// - Strings (`&str`) are only supported as input parameters, not return values
+///
+/// # Panics
+///
+/// The macro will fail to compile if:
+///
+/// - The trait contains non-function items
+/// - A method uses `self` receiver
+/// - An unsupported type is used in parameters or return values
+/// - The GUID format is invalid
 #[proc_macro_attribute]
 pub fn rpc_interface(
     attr: proc_macro::TokenStream,
@@ -92,7 +194,7 @@ fn rpc_interface_inner(
 
     let interface = Interface {
         name: t.ident.to_string(),
-        uuid: GUID::from_u128(attrs.guid),
+        uuid: attrs.guid,
         version: attrs.version,
         methods,
     };

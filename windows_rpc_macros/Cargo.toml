@@ -14,25 +14,3 @@ proc-macro = true
 quote = "1.0"
 proc-macro2 = "1.0"
 syn = "2.0"
-
-[target.'cfg(target_os = "windows")'.dependencies.windows]
-version = "0.62"
-features = [
-    "Win32_Foundation",
-    "Win32_System",
-    "Win32_System_Threading",
-    "Win32_System_Rpc",
-]
-
-[target.'cfg(target_os = "windows")'.dependencies.windows-sys]
-version = "0.61"
-features = [
-    "Win32_Foundation",
-    "Win32_System",
-    "Win32_System_Com",
-    "Win32_System_Threading",
-    "Win32_System_Rpc",
-]
-
-[package.metadata.docs.rs]
-default-target = "x86_64-pc-windows-msvc"

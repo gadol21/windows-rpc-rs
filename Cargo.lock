@@ -145,8 +145,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
- "windows",
- "windows-sys",
 ]
 
 [[package]]

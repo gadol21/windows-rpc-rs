@@ -1,6 +1,5 @@
 use quote::{ToTokens, quote};
 use syn::Type as SynType;
-use windows::core::GUID;
 
 use crate::constants::*;
 
@@ -190,7 +189,7 @@ pub struct Method {
 #[derive(Default, Clone)]
 pub struct Interface {
     pub name: String,
-    pub uuid: GUID,
+    pub uuid: u128,
     pub version: InterfaceVersion,
     pub methods: Vec<Method>,
 }

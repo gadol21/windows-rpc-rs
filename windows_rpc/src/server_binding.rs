@@ -1,3 +1,8 @@
+//! RPC server binding management.
+//!
+//! This module provides types for creating and managing RPC server bindings,
+//! which control the server lifecycle: registration, listening, and shutdown.
+
 use std::ffi::c_void;
 use windows::Win32::System::Rpc::{
     RPC_C_LISTEN_MAX_CALLS_DEFAULT, RpcMgmtStopServerListening, RpcServerListen,
@@ -5,10 +10,15 @@ use windows::Win32::System::Rpc::{
 };
 use windows::core::{Error, HSTRING, PCWSTR};
 
-/// Protocol sequences supported by the server
+/// Protocol sequence for RPC server communication.
+///
+/// Specifies the transport protocol the server will use to accept RPC calls.
 #[derive(Debug, Clone, Copy)]
 pub enum ProtocolSequence {
-    /// ALPC/LPC (ncalrpc) - Local RPC
+    /// ALPC (Advanced Local Procedure Call) - local RPC on the same machine.
+    ///
+    /// Uses the `ncalrpc` protocol sequence. This is the only currently
+    /// supported protocol.
     Alpc,
 }
 
@@ -20,7 +30,40 @@ impl ProtocolSequence {
     }
 }
 
-/// Server binding wrapper for managing RPC server lifecycle
+/// Manages the lifecycle of an RPC server.
+///
+/// This struct handles the low-level details of registering an RPC interface
+/// with the Windows RPC runtime and managing the listen/stop lifecycle.
+///
+/// # Note
+///
+/// You typically don't create `ServerBinding` directly. Instead, use the
+/// generated `{Interface}Server` struct which manages this for you.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use windows_rpc::rpc_interface;
+///
+/// #[rpc_interface(guid(0x12345678_1234_1234_1234_123456789abc), version(1.0))]
+/// trait MyInterface {
+///     fn hello() -> i32;
+/// }
+///
+/// struct MyImpl;
+/// impl MyInterfaceServerImpl for MyImpl {
+///     fn hello(&self) -> i32 { 42 }
+/// }
+///
+/// # fn main() -> windows::core::Result<()> {
+/// let mut server = MyInterfaceServer::new(MyImpl);
+/// server.register("my_endpoint")?;
+/// server.listen_async()?;
+/// // ... server is now accepting calls ...
+/// server.stop()?;
+/// # Ok(())
+/// # }
+/// ```
 pub struct ServerBinding {
     protocol: ProtocolSequence,
     endpoint: String,
@@ -29,8 +72,21 @@ pub struct ServerBinding {
 }
 
 impl ServerBinding {
-    /// Create a new server binding
-    /// Note: This does not register the interface yet - call register() to do that
+    /// Creates a new server binding for the specified endpoint.
+    ///
+    /// This registers the protocol sequence and endpoint with the RPC runtime,
+    /// but does not yet register the interface. Call [`register()`](Self::register)
+    /// to complete the registration.
+    ///
+    /// # Arguments
+    ///
+    /// * `protocol` - The protocol sequence to use
+    /// * `endpoint` - The endpoint name clients will connect to
+    /// * `interface_handle` - Pointer to the RPC interface specification
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the protocol sequence and endpoint cannot be registered.
     pub fn new(
         protocol: ProtocolSequence,
         endpoint: impl Into<String>,
@@ -58,7 +114,14 @@ impl ServerBinding {
         })
     }
 
-    /// Register the RPC interface
+    /// Registers the RPC interface with the runtime.
+    ///
+    /// After registration, the server can begin accepting calls. This method
+    /// is idempotent - calling it multiple times has no effect.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the interface cannot be registered.
     pub fn register(&mut self) -> Result<(), Error> {
         if self.registered {
             return Ok(());
@@ -82,8 +145,17 @@ impl ServerBinding {
         Ok(())
     }
 
-    /// Start listening for RPC calls (blocking)
-    /// This will block until stop() is called from another thread or the server is shut down
+    /// Starts listening for RPC calls (blocking).
+    ///
+    /// This method blocks the current thread until [`stop()`](Self::stop) is called
+    /// from another thread. Use [`listen_async()`](Self::listen_async) for non-blocking
+    /// operation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The interface has not been registered
+    /// - The RPC runtime fails to start listening
     pub fn listen(&self) -> Result<(), Error> {
         if !self.registered {
             return Err(Error::from_hresult(windows::core::HRESULT(-1)));
@@ -101,8 +173,20 @@ impl ServerBinding {
         Ok(())
     }
 
-    /// Start listening for RPC calls (non-blocking)
-    /// Returns immediately and processes calls in background threads
+    /// Starts listening for RPC calls (non-blocking).
+    ///
+    /// Returns immediately while RPC calls are processed in background threads
+    /// managed by the Windows RPC runtime. Call [`stop()`](Self::stop) to shut
+    /// down the server.
+    ///
+    /// This is the recommended mode for most applications as it allows the main
+    /// thread to continue other work or wait for a shutdown signal.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The interface has not been registered
+    /// - The RPC runtime fails to start listening
     pub fn listen_async(&self) -> Result<(), Error> {
         if !self.registered {
             return Err(Error::from_hresult(windows::core::HRESULT(-1)));
@@ -120,7 +204,14 @@ impl ServerBinding {
         Ok(())
     }
 
-    /// Stop the server from listening
+    /// Stops the server from accepting new RPC calls.
+    ///
+    /// Outstanding calls may still complete. For a blocking server, this will
+    /// cause [`listen()`](Self::listen) to return.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the RPC runtime fails to stop.
     pub fn stop(&self) -> Result<(), Error> {
         unsafe {
             RpcMgmtStopServerListening(None).ok()?;
@@ -128,7 +219,13 @@ impl ServerBinding {
         Ok(())
     }
 
-    /// Unregister the interface
+    /// Unregisters the RPC interface.
+    ///
+    /// This is called automatically when the `ServerBinding` is dropped.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the interface cannot be unregistered.
     pub fn unregister(&mut self) -> Result<(), Error> {
         if !self.registered {
             return Ok(());
@@ -142,12 +239,12 @@ impl ServerBinding {
         Ok(())
     }
 
-    /// Get the endpoint name
+    /// Returns the endpoint name.
     pub fn endpoint(&self) -> &str {
         &self.endpoint
     }
 
-    /// Get the protocol sequence
+    /// Returns the protocol sequence.
     pub fn protocol(&self) -> ProtocolSequence {
         self.protocol
     }
