@@ -1,0 +1,35 @@
+name: Check
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose
+      
+  test:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run tests
+      run: cargo test --verbose
+      
+  fmt:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run fmt
+      run: cargo fmt --check
+      
+  clippy:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run clippy
+      run: cargo clippy -- -Dwarnings
