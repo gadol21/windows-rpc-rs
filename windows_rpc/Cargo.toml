@@ -1,6 +1,6 @@
 [package]
 name = "windows-rpc"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Windows RPC for Rust"
@@ -11,7 +11,7 @@ readme = "../README.md"
 default-target = "x86_64-pc-windows-msvc"
 
 [dependencies]
-windows-rpc-macros = { path = "../windows_rpc_macros", version = "0.0.4" }
+windows-rpc-macros = { path = "../windows_rpc_macros", version = "0.0.5" }
 
 [dependencies.windows]
 version = "0.62"

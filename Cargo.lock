@@ -131,7 +131,7 @@ dependencies = [
 
 [[package]]
 name = "windows-rpc"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "windows",
  "windows-rpc-macros",
@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "windows-rpc-macros"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "proc-macro2",
  "quote",
