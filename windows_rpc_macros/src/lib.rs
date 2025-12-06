@@ -5,8 +5,6 @@
 //!
 //! See the [`windows_rpc`](https://docs.rs/windows-rpc) crate for the main documentation and examples.
 
-#![cfg(windows)]
-
 mod client_codegen;
 #[allow(dead_code)]
 mod constants;
