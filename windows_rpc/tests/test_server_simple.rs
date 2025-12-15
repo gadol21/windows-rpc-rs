@@ -8,7 +8,7 @@ trait SimpleRpc {
 struct SimpleRpcImpl;
 
 impl SimpleRpcServerImpl for SimpleRpcImpl {
-    fn add(&self, a: i32, b: i32) -> i32 {
+    fn add(a: i32, b: i32) -> i32 {
         a + b
     }
 }
@@ -16,13 +16,13 @@ impl SimpleRpcServerImpl for SimpleRpcImpl {
 #[test]
 fn test_server_creation() {
     // Just test that we can create the server without crashing
-    let _server = SimpleRpcServer::new(SimpleRpcImpl);
+    let _server = SimpleRpcServer::<SimpleRpcImpl>::new();
     println!("Server created successfully");
 }
 
 #[test]
 fn test_server_registration() {
-    let mut server = SimpleRpcServer::new(SimpleRpcImpl);
+    let mut server = SimpleRpcServer::<SimpleRpcImpl>::new();
     match server.register("test_simple_endpoint") {
         Ok(_) => {
             println!("Server registered successfully");

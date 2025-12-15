@@ -12,7 +12,7 @@ This is a Rust library for creating Windows RPC (Remote Procedure Call) clients 
 
 The project is organized as a Cargo workspace with two crates:
 
-- **windows_rpc**: Main library providing RPC runtime support (client/server bindings, memory allocators, thread-local context management)
+- **windows_rpc**: Main library providing RPC runtime support (client/server bindings, memory allocators)
 - **windows_rpc_macros**: Procedural macro crate that generates both RPC client and server code from trait definitions
 
 ### Code Generation Flow
@@ -28,9 +28,9 @@ The project is organized as a Cargo workspace with two crates:
    - All metadata structures (MIDL_STUBLESS_PROXY_INFO, MIDL_STUB_DESC, RPC_CLIENT_INTERFACE, etc.)
 
    **Server Side (`server_codegen.rs`):**
-   - `{Interface}ServerImpl` trait for users to implement (with `&self` methods)
-   - `{Interface}Server` struct with all server metadata structures
-   - Extern "C" wrapper functions that bridge RPC callbacks to Rust trait methods
+   - `{Interface}ServerImpl` trait for users to implement (with static methods)
+   - `{Interface}Server<T>` generic struct with all server metadata structures
+   - Extern "C" wrapper functions that bridge RPC callbacks to static trait methods
    - Server metadata (MIDL_SERVER_INFO, RPC_SERVER_INTERFACE, RPC_DISPATCH_TABLE, etc.)
 
 ### Key Components
@@ -46,9 +46,10 @@ The project is organized as a Cargo workspace with two crates:
 - Handles string parameters by converting Rust `&str` to `HSTRING` to `PCWSTR` for FFI
 
 **windows_rpc_macros/src/server_codegen.rs** (server generation):
-- Generates the `{Interface}ServerImpl` trait and `{Interface}Server` struct
-- Creates extern "C" wrapper functions that convert FFI types to Rust types
+- Generates the `{Interface}ServerImpl` trait (with static methods) and `{Interface}Server<T>` generic struct
+- Creates extern "C" wrapper functions that convert FFI types to Rust types and call static trait methods
 - Handles string parameters by converting `PCWSTR` to Rust `String` using `.to_string()`
+- Wrapper functions are generated within the generic impl block and call `T::method_name()` directly
 - Sets up dispatch tables and server routine tables
 
 **windows_rpc_macros/src/types.rs**:
@@ -66,11 +67,6 @@ The project is organized as a Cargo workspace with two crates:
 - `ServerBinding` manages RPC server lifecycle
 - Methods: `register()`, `listen()` (blocking), `listen_async()` (non-blocking), `stop()`
 - Handles protocol sequence registration and interface registration
-
-**windows_rpc/src/server.rs**:
-- Thread-local context management for passing trait implementation to wrapper functions
-- Stores fat pointers as `(usize, usize)` tuples to preserve vtable information
-- `set_context()`, `clear_context()`, and `with_context()` for context management
 
 **windows_rpc/src/alloc.rs**:
 - Custom MIDL memory allocator/deallocator for RPC runtime
@@ -127,7 +123,7 @@ Client Side:
 
 Server Side:
 - `PCWSTR` received in extern "C" wrapper → `String` via `.to_string().unwrap()`
-- Converted string passed as `&str` to trait implementation
+- Converted string passed as `&str` to static trait method
 - Wrapper functions have an extra `binding_handle` parameter (first parameter)
 
 **Output Strings (`String` return values):**
@@ -205,12 +201,15 @@ When generating server code, these fields MUST be initialized correctly (referen
 
 Missing any of these will cause runtime errors like `ERROR_STUB_DATA_INVALID` or heap corruption.
 
-### Server Thread-Local Context
+### Server Implementation Pattern
 
-The server uses thread-local storage to pass the trait implementation to wrapper functions:
-- Fat pointers (trait objects) are stored as `(usize, usize)` tuples via `transmute_copy`
-- Context is set in `register()` and cleared in `stop()`
-- Wrapper functions call `with_context()` to access the implementation
+The server uses static trait methods and monomorphization:
+- The `{Interface}Server<T>` struct is generic over the implementation type `T`
+- The `{Interface}ServerImpl` trait defines static methods (no `&self` parameter)
+- Wrapper functions are generated inside the `impl<T: {Interface}ServerImpl>` block
+- Each wrapper calls the corresponding trait method as `T::method_name(...)`
+- Monomorphization creates different wrapper functions for each concrete implementation type
+- The server struct uses `PhantomData<T>` to track the implementation type without storing an instance
 
 ## Edition
 

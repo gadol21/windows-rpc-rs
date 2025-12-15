@@ -8,7 +8,7 @@ trait TestRpc {
 
 struct TestRpcImpl;
 impl TestRpcServerImpl for TestRpcImpl {
-    fn return_string(&self, param: &str) -> String {
+    fn return_string(param: &str) -> String {
         format!("Got {param}")
     }
 }
@@ -18,7 +18,7 @@ fn test_client_server_integration() {
     let endpoint = "test_endpoint_out_string";
 
     // Start server in a background thread
-    let mut server = TestRpcServer::new(TestRpcImpl);
+    let mut server = TestRpcServer::<TestRpcImpl>::new();
     server
         .register(&endpoint)
         .expect("Failed to register server");

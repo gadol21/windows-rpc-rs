@@ -38,21 +38,22 @@ fn generate_server_trait(interface: &Interface) -> proc_macro2::TokenStream {
             };
 
             quote! {
-                fn #method_name(&self, #(#params),*) #return_type;
+                fn #method_name(#(#params),*) #return_type;
             }
         })
         .collect();
 
     quote! {
-        pub trait #trait_name: Send + Sync + 'static {
+        pub trait #trait_name {
             #(#methods)*
         }
     }
 }
 
 /// Generate extern "C" wrapper functions for each method
+/// These are now generated as part of the impl block and call T::method_name directly
 fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream {
-    let trait_name = format_ident!("{}ServerImpl", interface.name);
+    let _trait_name = format_ident!("{}ServerImpl", interface.name);
 
     let wrappers: Vec<_> = interface
         .methods
@@ -112,15 +113,14 @@ fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream
                 .collect();
 
             // Generate the wrapper body based on return type
+            // Now calling T::method_name directly instead of using context
             match &method.return_type {
                 Some(Type::Simple(_)) => {
                     let rtype_tokens = method.return_type.as_ref().unwrap().to_rust_return_type();
                     quote! {
                         extern "C" fn #wrapper_name(binding_handle: *const std::ffi::c_void, #(#ffi_params),*) -> #rtype_tokens {
                             #(#string_conversions)*
-                            windows_rpc::server::with_context::<dyn #trait_name, _, _>(|impl_| {
-                                impl_.#method_name(#(#param_names),*)
-                            })
+                            T::#method_name(#(#param_names),*)
                         }
                     }
                 }
@@ -129,9 +129,7 @@ fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream
                     quote! {
                         extern "C" fn #wrapper_name(binding_handle: *const std::ffi::c_void, #(#ffi_params),*) {
                             #(#string_conversions)*
-                            let __result = windows_rpc::server::with_context::<dyn #trait_name, _, _>(|impl_| {
-                                impl_.#method_name(#(#param_names),*)
-                            });
+                            let __result = T::#method_name(#(#param_names),*);
 
                             // Convert the Rust String to a wide string and allocate with midl_user_allocate
                             unsafe {
@@ -156,9 +154,7 @@ fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream
                     quote! {
                         extern "C" fn #wrapper_name(binding_handle: *const std::ffi::c_void, #(#ffi_params),*) {
                             #(#string_conversions)*
-                            windows_rpc::server::with_context::<dyn #trait_name, _, _>(|impl_| {
-                                impl_.#method_name(#(#param_names),*)
-                            })
+                            T::#method_name(#(#param_names),*)
                         }
                     }
                 }
@@ -212,7 +208,7 @@ fn generate_server_routine_table(interface: &Interface) -> proc_macro2::TokenStr
                     std::mem::transmute::<
                         *const (),
                         windows_sys::Win32::System::Rpc::SERVER_ROUTINE
-                    >(#wrapper_name as *const ())
+                    >(Self::#wrapper_name as *const ())
                 }
             }
         })
@@ -257,9 +253,7 @@ pub fn compile_server(interface: &Interface) -> proc_macro2::TokenStream {
     quote! {
         #server_trait
 
-        #wrapper_functions
-
-        pub struct #rpc_server_name {
+        pub struct #rpc_server_name<T: #trait_name> {
             // RPC metadata structures
             server_interface: std::boxed::Box<windows_sys::Win32::System::Rpc::RPC_SERVER_INTERFACE>,
             server_info: std::boxed::Box<windows_sys::Win32::System::Rpc::MIDL_SERVER_INFO>,
@@ -283,13 +277,14 @@ pub fn compile_server(interface: &Interface) -> proc_macro2::TokenStream {
             auto_bind_handle: std::boxed::Box<*mut std::ffi::c_void>,
 
             // Server state
-            implementation: std::boxed::Box<dyn #trait_name>,
             binding: std::option::Option<windows_rpc::server_binding::ServerBinding>,
+            _phantom: std::marker::PhantomData<T>,
         }
 
-        impl #rpc_server_name {
-            pub fn new<T: #trait_name>(implementation: T) -> Self {
-                let implementation = std::boxed::Box::new(implementation) as std::boxed::Box<dyn #trait_name>;
+        impl<T: #trait_name> #rpc_server_name<T> {
+            #wrapper_functions
+
+            pub fn new() -> Self {
                 let mut auto_bind_handle = std::boxed::Box::new(std::ptr::null_mut());
 
                 // Initialize format strings
@@ -480,18 +475,12 @@ pub fn compile_server(interface: &Interface) -> proc_macro2::TokenStream {
                     ndr64_proc_buffer,
                     ndr64_proc_table,
                     auto_bind_handle,
-                    implementation,
                     binding: std::option::Option::None,
+                    _phantom: std::marker::PhantomData,
                 }
             }
 
             pub fn register(&mut self, endpoint: &str) -> std::result::Result<(), windows::core::Error> {
-                // Set the implementation context for this thread
-                let impl_ptr: *const dyn #trait_name = &*self.implementation as *const _;
-                unsafe {
-                    windows_rpc::server::set_context(impl_ptr);
-                }
-
                 let binding = windows_rpc::server_binding::ServerBinding::new(
                     windows_rpc::ProtocolSequence::Alpc,
                     endpoint,
@@ -524,12 +513,11 @@ pub fn compile_server(interface: &Interface) -> proc_macro2::TokenStream {
                 if let std::option::Option::Some(binding) = &self.binding {
                     binding.stop()?;
                 }
-                windows_rpc::server::clear_context();
                 std::result::Result::Ok(())
             }
         }
 
-        impl std::ops::Drop for #rpc_server_name {
+        impl<T: #trait_name> std::ops::Drop for #rpc_server_name<T> {
             fn drop(&mut self) {
                 let _ = self.stop();
             }

@@ -10,15 +10,15 @@ trait TestRpc {
 
 struct TestRpcImpl;
 impl TestRpcServerImpl for TestRpcImpl {
-    fn add(&self, a: i32, b: i32) -> i32 {
+    fn add(a: i32, b: i32) -> i32 {
         a + b
     }
 
-    fn multiply(&self, x: i32, y: i32) -> i32 {
+    fn multiply(x: i32, y: i32) -> i32 {
         x * y
     }
 
-    fn strlen(&self, string: &str) -> u64 {
+    fn strlen(string: &str) -> u64 {
         string.len() as u64
     }
 }
@@ -28,7 +28,7 @@ fn test_client_server_integration() {
     let endpoint = "test_endpoint_12345";
 
     // Start server in a background thread
-    let mut server = TestRpcServer::new(TestRpcImpl);
+    let mut server = TestRpcServer::<TestRpcImpl>::new();
     server
         .register(&endpoint)
         .expect("Failed to register server");

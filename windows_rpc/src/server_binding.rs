@@ -34,11 +34,11 @@ use crate::ProtocolSequence;
 ///
 /// struct MyImpl;
 /// impl MyInterfaceServerImpl for MyImpl {
-///     fn hello(&self) -> i32 { 42 }
+///     fn hello() -> i32 { 42 }
 /// }
 ///
 /// # fn main() -> windows::core::Result<()> {
-/// let mut server = MyInterfaceServer::new(MyImpl);
+/// let mut server = MyInterfaceServer::<MyImpl>::new();
 /// server.register("my_endpoint")?;
 /// server.listen_async()?;
 /// // ... server is now accepting calls ...
