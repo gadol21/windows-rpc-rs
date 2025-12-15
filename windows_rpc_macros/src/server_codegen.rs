@@ -8,6 +8,8 @@ use crate::ndr::{generate_proc_header, generate_type_format_string};
 use crate::ndr64::{generate_ndr64_proc_buffer_code, generate_ndr64_type_format};
 use crate::types::Interface;
 
+use crate::types::Type;
+
 /// Generate the server implementation trait that users will implement
 fn generate_server_trait(interface: &Interface) -> proc_macro2::TokenStream {
     let trait_name = format_ident!("{}ServerImpl", interface.name);
@@ -28,7 +30,8 @@ fn generate_server_trait(interface: &Interface) -> proc_macro2::TokenStream {
                 .collect();
 
             let return_type = if let Some(rtype) = &method.return_type {
-                let rtype_tokens = rtype.to_rust_type();
+                // Use to_rust_return_type for return values (String instead of &str)
+                let rtype_tokens = rtype.to_rust_return_type();
                 quote! { -> #rtype_tokens }
             } else {
                 quote! {}
@@ -57,14 +60,15 @@ fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream
         .map(|method| {
             let wrapper_name = format_ident!("__{}__{}_wrapper", interface.name, method.name);
             let method_name = format_ident!("{}", method.name);
+            let has_string_return = matches!(method.return_type, Some(Type::String));
 
             // Generate FFI parameter types (PCWSTR for strings, native types for others)
-            let ffi_params: Vec<_> = method
+            let mut ffi_params: Vec<_> = method
                 .parameters
                 .iter()
                 .map(|param| {
                     let param_name = format_ident!("{}", param.name);
-                    let param_type = if matches!(param.r#type, crate::types::Type::String) {
+                    let param_type = if matches!(param.r#type, Type::String) {
                         quote! { windows::core::PCWSTR }
                     } else {
                         param.r#type.to_rust_type()
@@ -73,11 +77,16 @@ fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream
                 })
                 .collect();
 
+            // Add out string parameter if function returns String
+            if has_string_return {
+                ffi_params.push(quote! { __out_string: *mut *mut u16 });
+            }
+
             // Generate string conversions for string parameters
             let string_conversions: Vec<_> = method
                 .parameters
                 .iter()
-                .filter(|p| matches!(p.r#type, crate::types::Type::String))
+                .filter(|p| matches!(p.r#type, Type::String))
                 .map(|param| {
                     let param_name = format_ident!("{}", param.name);
                     let converted_name = format_ident!("__{}_converted", param.name);
@@ -92,7 +101,7 @@ fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream
                 .parameters
                 .iter()
                 .map(|param| {
-                    if matches!(param.r#type, crate::types::Type::String) {
+                    if matches!(param.r#type, Type::String) {
                         let converted_name = format_ident!("__{}_converted", param.name);
                         quote! { #converted_name.as_str() }
                     } else {
@@ -102,19 +111,56 @@ fn generate_wrapper_functions(interface: &Interface) -> proc_macro2::TokenStream
                 })
                 .collect();
 
-            let return_type = if let Some(rtype) = &method.return_type {
-                let rtype_tokens = rtype.to_rust_type();
-                quote! { -> #rtype_tokens }
-            } else {
-                quote! {}
-            };
+            // Generate the wrapper body based on return type
+            match &method.return_type {
+                Some(Type::Simple(_)) => {
+                    let rtype_tokens = method.return_type.as_ref().unwrap().to_rust_return_type();
+                    quote! {
+                        extern "C" fn #wrapper_name(binding_handle: *const std::ffi::c_void, #(#ffi_params),*) -> #rtype_tokens {
+                            #(#string_conversions)*
+                            windows_rpc::server::with_context::<dyn #trait_name, _, _>(|impl_| {
+                                impl_.#method_name(#(#param_names),*)
+                            })
+                        }
+                    }
+                }
+                Some(Type::String) => {
+                    // For string return, we don't return anything directly - we write to the out param
+                    quote! {
+                        extern "C" fn #wrapper_name(binding_handle: *const std::ffi::c_void, #(#ffi_params),*) {
+                            #(#string_conversions)*
+                            let __result = windows_rpc::server::with_context::<dyn #trait_name, _, _>(|impl_| {
+                                impl_.#method_name(#(#param_names),*)
+                            });
 
-            quote! {
-                extern "C" fn #wrapper_name(binding_handle: *const std::ffi::c_void, #(#ffi_params),*) #return_type {
-                    #(#string_conversions)*
-                    windows_rpc::server::with_context::<dyn #trait_name, _, _>(|impl_| {
-                        impl_.#method_name(#(#param_names),*)
-                    })
+                            // Convert the Rust String to a wide string and allocate with midl_user_allocate
+                            unsafe {
+                                // Convert to UTF-16 with null terminator
+                                let wide: Vec<u16> = __result.encode_utf16().chain(std::iter::once(0)).collect();
+                                let byte_len = wide.len() * std::mem::size_of::<u16>();
+
+                                // Allocate memory using MIDL allocator
+                                let ptr = windows_rpc::alloc::midl_alloc(byte_len) as *mut u16;
+                                if !ptr.is_null() {
+                                    // Copy the wide string to the allocated memory
+                                    std::ptr::copy_nonoverlapping(wide.as_ptr(), ptr, wide.len());
+                                }
+
+                                // Write the pointer to the out parameter
+                                *__out_string = ptr;
+                            }
+                        }
+                    }
+                }
+                None => {
+                    quote! {
+                        extern "C" fn #wrapper_name(binding_handle: *const std::ffi::c_void, #(#ffi_params),*) {
+                            #(#string_conversions)*
+                            windows_rpc::server::with_context::<dyn #trait_name, _, _>(|impl_| {
+                                impl_.#method_name(#(#param_names),*)
+                            })
+                        }
+                    }
                 }
             }
         })

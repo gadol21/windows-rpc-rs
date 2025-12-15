@@ -38,38 +38,94 @@ fn generate_method(method: (usize, &Method)) -> proc_macro2::TokenStream {
         .collect();
 
     // Generate parameter propagation, using HSTRING variables for strings
-    let parameters_propagation = method.parameters.iter().map(|param| {
-        if matches!(param.r#type, Type::String) {
-            let hstring_name = format_ident!("__{}_hstring", param.name);
-            quote! { #hstring_name.as_ptr() }
-        } else {
-            param
-                .r#type
-                .rust_type_to_abi(format_ident!("{}", param.name))
+    let parameters_propagation: Vec<_> = method
+        .parameters
+        .iter()
+        .map(|param| {
+            if matches!(param.r#type, Type::String) {
+                let hstring_name = format_ident!("__{}_hstring", param.name);
+                quote! { #hstring_name.as_ptr() }
+            } else {
+                param
+                    .r#type
+                    .rust_type_to_abi(format_ident!("{}", param.name))
+            }
+        })
+        .collect();
+
+    // Handle different return type cases
+    match &method.return_type {
+        Some(Type::Simple(base_type)) => {
+            let rtype = Type::Simple(*base_type).to_rust_type();
+            quote! {
+                pub fn #method_name(&self, #(#parameters),*) -> #rtype {
+                    #(#string_conversions)*
+                    unsafe {
+                        windows_sys::Win32::System::Rpc::NdrClientCall3(
+                            &raw const *self.proxy_info as _,
+                            #method_index,
+                            std::ptr::null_mut(),
+                            self.binding.handle(),
+                            #(#parameters_propagation),*
+                        ).Simple as #rtype
+                    }
+                }
+            }
         }
-    });
-
-    let (method_suffix, return_suffix) = if let Some(rtype) = &method.return_type
-        && matches!(rtype, Type::Simple(_))
-    {
-        let rtype = rtype.to_rust_type();
-        (
+        Some(Type::String) => {
+            // String return: we need to pass an out parameter pointer
             quote! {
-                .Simple as #rtype
-            },
-            quote! {
-                -> #rtype
-            },
-        )
-    } else {
-        (quote! { ; }, quote! {})
-    };
+                pub fn #method_name(&self, #(#parameters),*) -> String {
+                    #(#string_conversions)*
+                    // Out parameter for string return
+                    let mut __out_string: *mut u16 = std::ptr::null_mut();
+                    unsafe {
+                        windows_sys::Win32::System::Rpc::NdrClientCall3(
+                            &raw const *self.proxy_info as _,
+                            #method_index,
+                            std::ptr::null_mut(),
+                            self.binding.handle(),
+                            #(#parameters_propagation,)*
+                            &raw mut __out_string
+                        );
 
-    quote! {
-        pub fn #method_name(&self, #(#parameters),*) #return_suffix {
-            #(#string_conversions)*
-            unsafe {
-                windows_sys::Win32::System::Rpc::NdrClientCall3(&raw const *self.proxy_info as _, #method_index, std::ptr::null_mut(), self.binding.handle(), #(#parameters_propagation),*)#method_suffix
+                        // Convert the wide string to Rust String
+                        if __out_string.is_null() {
+                            return String::new();
+                        }
+
+                        // Find the null terminator
+                        let mut len = 0;
+                        while *__out_string.add(len) != 0 {
+                            len += 1;
+                        }
+
+                        // Create the string from the wide chars
+                        let slice = std::slice::from_raw_parts(__out_string, len);
+                        let result = String::from_utf16_lossy(slice);
+
+                        // Free the memory allocated by the server
+                        windows_rpc::alloc::midl_free(__out_string as *mut std::ffi::c_void);
+
+                        result
+                    }
+                }
+            }
+        }
+        None => {
+            quote! {
+                pub fn #method_name(&self, #(#parameters),*) {
+                    #(#string_conversions)*
+                    unsafe {
+                        windows_sys::Win32::System::Rpc::NdrClientCall3(
+                            &raw const *self.proxy_info as _,
+                            #method_index,
+                            std::ptr::null_mut(),
+                            self.binding.handle(),
+                            #(#parameters_propagation),*
+                        );
+                    }
+                }
             }
         }
     }

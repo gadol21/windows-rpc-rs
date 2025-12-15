@@ -57,7 +57,7 @@ impl TryFrom<SynType> for Type {
     type Error = syn::Error;
 
     fn try_from(value: syn::Type) -> Result<Self, Self::Error> {
-        // Handle &str
+        // Handle &str (input string parameter)
         if let SynType::Reference(ref_type) = &value
             && let SynType::Path(path) = &*ref_type.elem
             && path.path.is_ident("str")
@@ -89,6 +89,9 @@ impl TryFrom<SynType> for Type {
             Self::Simple(BaseType::I64)
         } else if ident == "u64" {
             Self::Simple(BaseType::U64)
+        } else if ident == "String" {
+            // String return type (output string)
+            Self::String
         } else {
             return Err(syn::Error::new_spanned(
                 ident.to_token_stream(),
@@ -101,6 +104,7 @@ impl TryFrom<SynType> for Type {
 }
 
 impl Type {
+    /// Returns the Rust type for input parameters
     pub fn to_rust_type(&self) -> proc_macro2::TokenStream {
         match self {
             Type::String => quote! { &str },
@@ -112,6 +116,15 @@ impl Type {
             Type::Simple(BaseType::I32) => quote! { i32 },
             Type::Simple(BaseType::U64) => quote! { u64 },
             Type::Simple(BaseType::I64) => quote! { i64 },
+        }
+    }
+
+    // TODO: Consider unifying with `to_rust_type` and add `is_in` `is_out` params
+    /// Returns the Rust type for return values (String instead of &str)
+    pub fn to_rust_return_type(&self) -> proc_macro2::TokenStream {
+        match self {
+            Type::String => quote! { String },
+            _ => self.to_rust_type(),
         }
     }
 

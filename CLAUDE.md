@@ -100,6 +100,7 @@ cargo test --test test_client_server -- --test-threads=1
 
 ### Test Structure
 - `test_client_server.rs`: Full client-server integration test with integer and string parameters
+- `test_out_string.rs`: Tests string return values (out strings)
 - `test_server_simple.rs`: Tests server creation and registration without client calls
 
 ## Type System
@@ -107,7 +108,7 @@ cargo test --test test_client_server -- --test-threads=1
 Currently supported Rust types for RPC parameters and return values:
 - **Signed integers**: `i8`, `i16`, `i32`, `i64`
 - **Unsigned integers**: `u8`, `u16`, `u32`, `u64`
-- **Strings**: `&str` (input parameters only)
+- **Strings**: `&str` (input parameters), `String` (return values)
 
 Each type has mappings to:
 - FC (Format Code) values for NDR 2.0
@@ -118,14 +119,31 @@ Each type has mappings to:
 
 Strings require special handling across the FFI boundary:
 
-**Client Side:**
+**Input Strings (`&str` parameters):**
+
+Client Side:
 - Rust `&str` → `HSTRING` → `PCWSTR` (via `rust_type_to_abi()`)
 - Conversion happens in generated client methods before calling `NdrClientCall3`
 
-**Server Side:**
+Server Side:
 - `PCWSTR` received in extern "C" wrapper → `String` via `.to_string().unwrap()`
 - Converted string passed as `&str` to trait implementation
 - Wrapper functions have an extra `binding_handle` parameter (first parameter)
+
+**Output Strings (`String` return values):**
+
+At the ABI level, output strings are represented as `wchar_t**` (out parameters). The server allocates memory using `midl_user_allocate` and the client frees it using `midl_user_free`.
+
+Client Side:
+- Passes `*mut *mut u16` as an additional out parameter to `NdrClientCall3`
+- After RPC call, converts the received wide string to Rust `String`
+- Frees the memory using `midl_user_free`
+
+Server Side:
+- Wrapper function receives `*mut *mut u16` as an out parameter
+- Calls trait method which returns `String`
+- Converts `String` to UTF-16, allocates memory with `midl_user_allocate`
+- Copies wide string and writes pointer to out parameter
 
 ## Important Implementation Details
 

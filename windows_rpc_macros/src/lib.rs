@@ -58,6 +58,7 @@ use types::{Interface, Method, Parameter, Type};
 /// | `i64` | FC_HYPER | Signed 64-bit integer |
 /// | `u64` | FC_HYPER | Unsigned 64-bit integer |
 /// | `&str` | Conformant string | Input parameters only |
+/// | `String` | Conformant string | Return values only |
 ///
 /// # Example
 ///
@@ -70,7 +71,7 @@ use types::{Interface, Method, Parameter, Type};
 /// trait Calculator {
 ///     fn add(a: i32, b: i32) -> i32;
 ///     fn multiply(x: i32, y: i32) -> i32;
-///     fn greet(name: &str) -> u32;
+///     fn greet(name: &str) -> String;
 /// }
 ///
 /// // Implement the server
@@ -82,9 +83,8 @@ use types::{Interface, Method, Parameter, Type};
 ///     fn multiply(&self, x: i32, y: i32) -> i32 {
 ///         x * y
 ///     }
-///     fn greet(&self, name: &str) -> u32 {
-///         println!("Hello, {name}!");
-///         0
+///     fn greet(&self, name: &str) -> String {
+///         format!("Hello, {name}!")
 ///     }
 /// }
 ///
@@ -107,11 +107,10 @@ use types::{Interface, Method, Parameter, Type};
 /// # Limitations
 ///
 /// - Only ALPC (local RPC) protocol is currently supported
-/// - No support for output (`[out]`) or input-output (`[in, out]`) parameters
+/// - No support for input-output (`[in, out]`) parameters
 /// - No support for pointer types, structs, arrays, or other complex types
 /// - No interface security (authentication/authorization) support
 /// - No SEH exception handling
-/// - Strings (`&str`) are only supported as input parameters, not return values
 ///
 /// # Panics
 ///
